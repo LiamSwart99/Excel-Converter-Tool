@@ -1,0 +1,79 @@
+{
+  "name": "mama-dance-metadata-converter",
+  "version": "1.0.0",
+  "description": "Mama Dance Metadata Sheet Converter — converts source music metadata Excel files into submission-ready formats.",
+  "author": "Mama Dance",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build:linux": "electron-builder --linux",
+    "build:win": "electron-builder --win",
+    "build:mac": "electron-builder --mac",
+    "build:all": "electron-builder --linux --win"
+  },
+  "build": {
+    "appId": "com.mamadance.metadata-converter",
+    "productName": "Mama Dance Metadata Converter",
+    "copyright": "Mama Dance",
+    "files": [
+      "main.js",
+      "afrosonic_converter.html",
+      "xlsx.full.min.js"
+    ],
+    "directories": {
+      "output": "dist"
+    },
+    "linux": {
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "category": "Office"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "publisherName": "Mama Dance"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Mama Dance Metadata Converter",
+      "uninstallDisplayName": "Mama Dance Metadata Converter",
+      "deleteAppDataOnUninstall": false,
+      "menuCategory": "Mama Dance",
+      "include": "installer.nsh"
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ],
+      "category": "public.app-category.utilities"
+    }
+  },
+  "devDependencies": {
+    "electron": "^33.4.11",
+    "electron-builder": "^25.1.8"
+  },
+  "dependencies": {
+    "@replit/connectors-sdk": "^0.3.0"
+  }
+}

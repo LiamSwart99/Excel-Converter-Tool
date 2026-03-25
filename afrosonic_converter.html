@@ -3,11 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Afrosonic MDML385 Converter</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<title>Mama Dance Metadata Sheet Converter</title>
+<script src="xlsx.full.min.js"></script>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
-
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
   :root {
@@ -27,7 +25,12 @@
     --success-light: #ebfbee;
     --error: #e03131;
     --error-light: #fff5f5;
-    --font: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+  }
+
+  html, body {
+    height: 100%;
+    overflow: hidden;
   }
 
   body {
@@ -35,66 +38,390 @@
     color: var(--text);
     font-family: var(--font);
     font-size: 13px;
-    min-height: 100vh;
     display: flex;
     flex-direction: column;
   }
 
-  header {
+  /* ── Screens ── */
+  .screen { display: none; flex-direction: column; height: 100vh; }
+  .screen.active { display: flex; }
+
+  /* ── Landing Screen ── */
+  .landing-screen {
+    align-items: center;
+    justify-content: center;
+    background: var(--bg);
+    gap: 0;
+  }
+
+  .landing-app-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-muted);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    margin-bottom: 48px;
+  }
+
+  .landing-hero {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 24px;
+    width: 100%;
+    max-width: 520px;
+  }
+
+  .landing-title {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--text);
+    text-align: center;
+    line-height: 1.25;
+    letter-spacing: -0.02em;
+  }
+
+  .landing-title span { color: var(--accent); }
+
+  .landing-sub {
+    font-size: 14px;
+    color: var(--text-muted);
+    text-align: center;
+    line-height: 1.6;
+  }
+
+  .landing-drop-zone {
+    width: 100%;
+    border: 2px dashed var(--border);
+    border-radius: 16px;
+    padding: 56px 40px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: var(--surface);
+    margin-top: 8px;
+  }
+  .landing-drop-zone:hover,
+  .landing-drop-zone.dragover {
+    border-color: var(--accent);
+    background: var(--accent-light);
+  }
+  .landing-drop-zone.dragover { border-style: solid; }
+
+  .landing-drop-icon {
+    width: 48px; height: 48px;
+    margin: 0 auto 20px;
+    color: var(--text-muted);
+    transition: color 0.2s;
+  }
+  .landing-drop-zone:hover .landing-drop-icon,
+  .landing-drop-zone.dragover .landing-drop-icon { color: var(--accent); }
+
+  .landing-drop-text {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 8px;
+  }
+  .landing-drop-sub {
+    font-size: 13px;
+    color: var(--text-muted);
+    line-height: 1.5;
+    margin-bottom: 24px;
+  }
+
+  .landing-browse-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 24px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-family: var(--font);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .landing-browse-btn:hover { background: #d14800; }
+
+  /* ── Format Selection Screen ── */
+  .format-screen {
+    align-items: center;
+    justify-content: center;
+    background: var(--bg);
+    gap: 40px;
+  }
+
+  .format-header {
+    text-align: center;
+  }
+  .format-header h2 {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: -0.02em;
+    margin-bottom: 8px;
+  }
+  .format-header p {
+    font-size: 13px;
+    color: var(--text-muted);
+  }
+
+  .format-files-summary {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--text-muted);
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px 14px;
+  }
+  .format-files-summary strong { color: var(--accent); }
+
+  .format-cards {
+    display: flex;
+    gap: 16px;
+    align-items: stretch;
+  }
+
+  .format-card {
+    width: 200px;
+    border: 2px solid var(--border);
+    border-radius: 14px;
+    padding: 28px 20px 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+    background: var(--surface);
+    position: relative;
+  }
+  .format-card:hover:not(.locked) {
+    border-color: var(--accent);
+    background: var(--accent-light);
+  }
+  .format-card.selected {
+    border-color: var(--accent);
+    background: var(--accent-light);
+  }
+  .format-card.locked {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+  .format-card-icon {
+    width: 48px; height: 48px;
+    border-radius: 12px;
+    background: var(--bg-tertiary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text-muted);
+    letter-spacing: -0.02em;
+  }
+  .format-card.selected .format-card-icon {
+    background: var(--accent);
+    color: #fff;
+  }
+  .format-card-name {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: -0.01em;
+  }
+  .format-card-desc {
+    font-size: 11px;
+    color: var(--text-muted);
+    text-align: center;
+    line-height: 1.5;
+  }
+  .format-card-badge {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 4px;
+  }
+  .format-card-badge.active {
+    background: var(--accent-light);
+    color: var(--accent);
+    border: 1px solid var(--accent-border);
+  }
+  .format-card-badge.soon {
+    background: var(--bg-tertiary);
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+  }
+
+  .format-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .btn-back {
+    padding: 10px 20px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-family: var(--font);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn-back:hover { border-color: var(--text-muted); color: var(--text); background: var(--bg-tertiary); }
+
+  .btn-continue {
+    padding: 10px 28px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-family: var(--font);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .btn-continue:hover { background: #d14800; }
+  .btn-continue:disabled { background: #e9ecef; color: #adb5bd; cursor: not-allowed; }
+
+  /* ── Workspace Screen ── */
+  .workspace-screen {
+    display: none;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+  }
+  .workspace-screen.active { display: flex; }
+
+  .ws-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 14px 24px;
+    padding: 12px 20px;
     border-bottom: 1px solid var(--border);
     background: var(--surface);
     flex-shrink: 0;
+    height: 50px;
   }
-  .logo {
+
+  .ws-header-left {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 12px;
   }
-  .logo-mark {
-    width: 24px; height: 24px;
-    background: var(--accent);
-    clip-path: polygon(50% 0%, 100% 100%, 0% 100%);
-  }
-  .logo-text {
+
+  .ws-app-name {
     font-size: 13px;
     font-weight: 600;
     color: var(--text);
     letter-spacing: -0.01em;
+    white-space: nowrap;
   }
-  .logo-text span { color: var(--accent); }
+
+  .ws-sep {
+    width: 1px;
+    height: 16px;
+    background: var(--border);
+  }
+
+  .ws-format-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--accent);
+    background: var(--accent-light);
+    border: 1px solid var(--accent-border);
+    padding: 3px 10px;
+    border-radius: 4px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .ws-format-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+  }
+
+  .ws-header-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
   .status-pill {
     font-size: 11px;
     font-weight: 500;
     color: var(--text-muted);
     background: var(--bg-tertiary);
     border: 1px solid var(--border);
-    padding: 4px 12px;
+    padding: 3px 10px;
     border-radius: 4px;
   }
   .status-pill.active { color: var(--accent); border-color: var(--accent-border); background: var(--accent-light); }
 
-  .workspace {
+  .ws-body {
     display: grid;
-    grid-template-columns: 300px 1fr;
+    grid-template-columns: 260px 1fr;
     flex: 1;
     overflow: hidden;
-    height: calc(100vh - 53px);
+    min-height: 0;
   }
 
+  /* ── Sidebar ── */
   .sidebar {
     border-right: 1px solid var(--border);
     display: flex;
     flex-direction: column;
     background: var(--bg-secondary);
     overflow: hidden;
+    min-height: 0;
   }
-  .sidebar-section {
-    padding: 16px;
+
+  .sidebar-drop {
+    padding: 12px;
     border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  .sidebar-drop-zone {
+    border: 1.5px dashed var(--border);
+    border-radius: 8px;
+    padding: 12px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.15s;
+    background: var(--surface);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    color: var(--text-muted);
+    font-size: 12px;
+  }
+  .sidebar-drop-zone:hover,
+  .sidebar-drop-zone.dragover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: var(--accent-light);
+  }
+
+  .sidebar-queue-header {
+    padding: 10px 12px 4px;
+    flex-shrink: 0;
   }
   .section-label {
     font-size: 10px;
@@ -102,45 +429,17 @@
     letter-spacing: 0.05em;
     text-transform: uppercase;
     color: var(--text-muted);
-    margin-bottom: 12px;
   }
-
-  .drop-zone {
-    border: 2px dashed var(--border);
-    border-radius: 8px;
-    padding: 24px 16px;
-    text-align: center;
-    cursor: pointer;
-    transition: all 0.15s ease;
-    background: var(--surface);
-  }
-  .drop-zone:hover, .drop-zone.dragover {
-    border-color: var(--accent);
-    background: var(--accent-light);
-  }
-  .drop-zone.dragover { border-style: solid; }
-  .drop-icon {
-    width: 32px; height: 32px;
-    margin: 0 auto 12px;
-    color: var(--text-muted);
-  }
-  .drop-zone:hover .drop-icon, .drop-zone.dragover .drop-icon { color: var(--accent); }
-  .drop-text {
-    font-size: 12px;
-    color: var(--text-secondary);
-    line-height: 1.5;
-  }
-  .drop-text strong { color: var(--accent); font-weight: 600; display: block; margin-bottom: 4px; }
-  .drop-sub { font-size: 11px; color: var(--text-muted); margin-top: 8px; }
 
   .file-queue {
     flex: 1;
     overflow-y: auto;
-    padding: 12px;
+    padding: 6px 8px;
+    min-height: 0;
   }
   .queue-empty {
     text-align: center;
-    padding: 24px 12px;
+    padding: 20px 12px;
     color: var(--text-muted);
     font-size: 12px;
   }
@@ -148,23 +447,23 @@
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
-    padding: 10px 12px;
+    padding: 9px 10px;
     border-radius: 6px;
-    margin-bottom: 4px;
+    margin-bottom: 3px;
     border: 1px solid transparent;
-    cursor: pointer;
-    transition: all 0.1s;
-    gap: 8px;
+    gap: 6px;
     background: var(--surface);
+    transition: border-color 0.1s;
   }
   .file-item:hover { border-color: var(--border); }
-  .file-item.selected { border-color: var(--accent-border); background: var(--accent-light); }
   .file-item-info { flex: 1; min-width: 0; }
   .file-name {
-    font-size: 11px;
-    font-weight: 600;
+    font-size: 10px;
+    font-weight: 700;
     color: var(--accent);
     margin-bottom: 2px;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
   }
   .file-title {
     font-size: 12px;
@@ -177,7 +476,7 @@
   .file-meta {
     font-size: 11px;
     color: var(--text-muted);
-    margin-top: 4px;
+    margin-top: 3px;
   }
   .file-remove {
     background: none;
@@ -194,19 +493,29 @@
   .file-remove:hover { opacity: 1; color: var(--error); }
 
   .sidebar-footer {
-    padding: 16px;
+    padding: 12px;
     border-top: 1px solid var(--border);
     display: flex;
     flex-direction: column;
     gap: 8px;
     background: var(--surface);
+    flex-shrink: 0;
   }
+
+  .track-count-summary {
+    font-size: 11px;
+    color: var(--text-muted);
+    text-align: center;
+    padding: 2px 0;
+  }
+  .track-count-summary span { color: var(--accent); font-weight: 600; }
+
   .btn {
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 8px;
-    padding: 10px 16px;
+    padding: 9px 16px;
     border: none;
     cursor: pointer;
     font-family: var(--font);
@@ -216,51 +525,39 @@
     transition: all 0.15s;
     width: 100%;
   }
-  .btn-primary {
-    background: var(--accent);
-    color: #fff;
-  }
+  .btn-primary { background: var(--accent); color: #fff; }
   .btn-primary:hover { background: #d14800; }
   .btn-primary:disabled { background: #e9ecef; color: #adb5bd; cursor: not-allowed; }
-  .btn-ghost {
-    background: var(--surface);
-    color: var(--text-secondary);
-    border: 1px solid var(--border);
-  }
+  .btn-ghost { background: var(--surface); color: var(--text-secondary); border: 1px solid var(--border); }
   .btn-ghost:hover { border-color: var(--text-muted); color: var(--text); background: var(--bg-tertiary); }
   .btn-ghost:disabled { opacity: 0.4; cursor: not-allowed; }
 
-  .track-count-summary {
-    font-size: 11px;
-    color: var(--text-muted);
-    text-align: center;
-    padding: 4px 0;
-  }
-  .track-count-summary span { color: var(--accent); font-weight: 600; }
-
+  /* ── Main panel ── */
   .main {
     display: flex;
     flex-direction: column;
     overflow: hidden;
     background: var(--bg);
+    min-height: 0;
   }
 
   .main-toolbar {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 10px 16px;
+    padding: 8px 14px;
     border-bottom: 1px solid var(--border);
     background: var(--surface);
     flex-shrink: 0;
     gap: 12px;
+    height: 44px;
   }
   .toolbar-left { display: flex; align-items: center; gap: 8px; }
   .toolbar-right { display: flex; align-items: center; gap: 8px; }
 
   .tab-group { display: flex; gap: 2px; }
   .tab {
-    padding: 6px 14px;
+    padding: 5px 12px;
     font-size: 12px;
     font-weight: 500;
     border: 1px solid transparent;
@@ -269,31 +566,53 @@
     background: transparent;
     color: var(--text-muted);
     transition: all 0.1s;
+    font-family: var(--font);
   }
   .tab:hover { color: var(--text); background: var(--bg-tertiary); }
   .tab.active { color: var(--accent); border-color: var(--accent-border); background: var(--accent-light); }
+
+  .icon-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px; height: 30px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--surface);
+    cursor: pointer;
+    color: var(--text-muted);
+    transition: all 0.1s;
+    font-size: 15px;
+  }
+  .icon-btn:hover { border-color: var(--text-muted); color: var(--text); background: var(--bg-tertiary); }
+  .icon-btn.active { color: var(--accent); border-color: var(--accent-border); background: var(--accent-light); }
 
   .track-filter {
     background: var(--surface);
     border: 1px solid var(--border);
     color: var(--text);
-    padding: 6px 12px;
+    padding: 5px 11px;
     font-size: 12px;
     font-family: var(--font);
     border-radius: 6px;
     outline: none;
-    width: 180px;
+    width: 200px;
     transition: border-color 0.1s;
   }
   .track-filter:focus { border-color: var(--accent); }
   .track-filter::placeholder { color: var(--text-muted); }
 
+  .progress-bar { height: 2px; background: var(--bg-tertiary); flex-shrink: 0; }
+  .progress-fill { height: 100%; background: var(--accent); width: 0%; transition: width 0.3s ease; }
+
   .table-container {
     flex: 1;
     overflow: auto;
     position: relative;
+    min-height: 0;
   }
 
+  /* ── Table ── */
   table {
     border-collapse: collapse;
     font-size: 12px;
@@ -314,7 +633,6 @@
     font-size: 11px;
     font-weight: 600;
     color: var(--text-secondary);
-    cursor: default;
     user-select: none;
     min-width: 80px;
     overflow: hidden;
@@ -322,38 +640,20 @@
     position: relative;
   }
   thead th:last-child { border-right: none; }
-  thead th.col-orange { color: var(--accent); }
-  thead th .req-dot {
-    display: inline-block;
-    width: 5px; height: 5px;
-    border-radius: 50%;
-    background: var(--accent);
-    margin-left: 4px;
-    vertical-align: middle;
-  }
 
-  /* Column resize handle */
   thead th .resize-handle {
     position: absolute;
-    right: 0;
-    top: 0;
-    bottom: 0;
+    right: 0; top: 0; bottom: 0;
     width: 5px;
     cursor: col-resize;
     background: transparent;
     z-index: 11;
   }
   thead th .resize-handle:hover,
-  thead th .resize-handle.resizing {
-    background: var(--accent);
-  }
+  thead th .resize-handle.resizing { background: var(--accent); }
 
-  tbody tr {
-    border-bottom: 1px solid var(--border-light);
-    transition: background 0.05s;
-  }
+  tbody tr { border-bottom: 1px solid var(--border-light); transition: background 0.05s; }
   tbody tr:hover { background: var(--bg-secondary); }
-  tbody tr.main-track td { }
   tbody tr.alt-track td { opacity: 0.7; }
   tbody tr.alt-track:hover td { opacity: 1; }
   tbody tr.album-separator td {
@@ -370,17 +670,12 @@
     border-right: 1px solid var(--border-light);
     color: var(--text);
     vertical-align: middle;
-    /* FIX: Allows text like 'Medium-Fast' to wrap instead of showing ellipsis (...) */
-    white-space: normal; 
+    white-space: normal;
     word-break: break-word;
     min-width: 80px;
   }
   td:last-child { border-right: none; }
   td.empty-cell { color: var(--text-muted); }
-  td.manual-cell {
-    background: var(--accent-light);
-    color: var(--text-secondary);
-  }
   td.is-work-y { color: var(--accent); font-weight: 600; }
   td.row-num {
     color: var(--text-muted);
@@ -392,6 +687,7 @@
     background: var(--bg-secondary);
   }
 
+  /* ── Empty state ── */
   .empty-state {
     display: flex;
     flex-direction: column;
@@ -402,17 +698,181 @@
     color: var(--text-muted);
     padding: 40px;
   }
-  .empty-state-icon {
-    width: 48px; height: 48px;
-    opacity: 0.3;
-  }
-  .empty-state-title {
-    font-size: 15px;
-    color: var(--text-secondary);
-    font-weight: 500;
-  }
+  .empty-state-icon { width: 48px; height: 48px; opacity: 0.3; }
+  .empty-state-title { font-size: 15px; color: var(--text-secondary); font-weight: 500; }
   .empty-state-sub { font-size: 13px; text-align: center; line-height: 1.6; max-width: 320px; color: var(--text-muted); }
 
+  /* ── Admin panel ── */
+  .admin-panel {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+  }
+  .admin-tabs {
+    display: flex;
+    gap: 2px;
+    padding: 14px 20px 0;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    flex-shrink: 0;
+  }
+  .admin-tab {
+    padding: 7px 16px;
+    font-size: 12px;
+    font-weight: 500;
+    border: 1px solid transparent;
+    border-bottom: none;
+    border-radius: 6px 6px 0 0;
+    cursor: pointer;
+    background: transparent;
+    color: var(--text-muted);
+    font-family: var(--font);
+    transition: all 0.1s;
+  }
+  .admin-tab:hover { color: var(--text); background: var(--bg-tertiary); }
+  .admin-tab.active {
+    color: var(--accent);
+    border-color: var(--border);
+    border-bottom-color: var(--surface);
+    background: var(--surface);
+    margin-bottom: -1px;
+  }
+  .admin-tab-content { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
+  .admin-tab-content.hidden { display: none; }
+  .admin-edittype-panel { padding: 24px; overflow-y: auto; flex: 1; }
+
+  /* ── Admin: Field Mapping tab ── */
+  .admin-format-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 20px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-secondary);
+    flex-shrink: 0;
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+  .admin-format-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 12px;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    background: var(--surface);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text);
+  }
+  .admin-format-chip.dest { color: var(--accent); border-color: var(--accent-border); background: var(--accent-light); }
+  .admin-search-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 20px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    background: var(--surface);
+  }
+  .admin-search {
+    flex: 1;
+    padding: 5px 11px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 12px;
+    font-family: var(--font);
+    background: var(--surface);
+    color: var(--text);
+    outline: none;
+  }
+  .admin-search:focus { border-color: var(--accent); }
+  .admin-search::placeholder { color: var(--text-muted); }
+  .mapping-scroll { flex: 1; overflow-y: auto; }
+  .mapping-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .mapping-table thead th {
+    position: sticky;
+    top: 0;
+    background: var(--bg-tertiary);
+    padding: 7px 12px;
+    text-align: left;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    border-bottom: 2px solid var(--border);
+    white-space: nowrap;
+    z-index: 5;
+  }
+  .mapping-group-row td {
+    background: var(--bg-secondary);
+    padding: 5px 12px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+  }
+  .mapping-row td { padding: 7px 12px; border-bottom: 1px solid var(--border-light); vertical-align: middle; }
+  .mapping-row:hover td { background: var(--bg-secondary); }
+  .badge {
+    display: inline-block;
+    padding: 2px 7px;
+    border-radius: 3px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .badge-direct   { background: #e7f5ff; color: #1971c2; }
+  .badge-fixed    { background: var(--bg-tertiary); color: var(--text-muted); border: 1px solid var(--border-light); }
+  .badge-computed { background: var(--success-light); color: var(--success); }
+  .mapping-source-select {
+    padding: 4px 8px;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    font-size: 11px;
+    font-family: var(--font);
+    background: var(--surface);
+    color: var(--text);
+    max-width: 260px;
+    width: 100%;
+    cursor: pointer;
+  }
+  .mapping-source-select:focus { outline: none; border-color: var(--accent); }
+  .mapping-value-input {
+    padding: 4px 8px;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    font-size: 11px;
+    font-family: var(--font);
+    background: var(--surface);
+    color: var(--text);
+    width: 200px;
+  }
+  .mapping-value-input:focus { outline: none; border-color: var(--accent); }
+  .mapping-computed-desc { font-size: 11px; color: var(--text-secondary); font-style: italic; }
+  .mapping-transform {
+    font-size: 10px;
+    color: var(--text-muted);
+    font-family: monospace;
+    background: var(--bg-tertiary);
+    padding: 1px 5px;
+    border-radius: 3px;
+  }
+  .mapping-notes { font-size: 11px; color: var(--text-muted); max-width: 260px; }
+  .admin-mapping-footer {
+    padding: 12px 20px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 8px;
+    background: var(--surface);
+    flex-shrink: 0;
+  }
+
+  /* ── Toast ── */
   #toast {
     position: fixed;
     bottom: 24px;
@@ -434,139 +894,328 @@
   #toast.show { opacity: 1; transform: translateY(0); }
   #toast.error { border-left-color: var(--error); }
 
-  .progress-bar {
-    height: 3px;
-    background: var(--bg-tertiary);
-    position: relative;
-    overflow: hidden;
-  }
-  .progress-fill {
-    height: 100%;
-    background: var(--accent);
-    width: 0%;
-    transition: width 0.3s ease;
-  }
-
   #fileInput { display: none; }
-
-  .legend {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    font-size: 11px;
-    color: var(--text-muted);
-  }
-  .legend-item { display: flex; align-items: center; gap: 6px; }
-  .legend-dot {
-    width: 8px; height: 8px;
-    border-radius: 2px;
-  }
-  .legend-dot.orange { background: var(--accent); opacity: 0.6; }
-  .legend-dot.dim { background: var(--text-muted); opacity: 0.3; }
 </style>
 </head>
 <body>
 
-<header>
-  <div class="logo">
-    <div class="logo-mark"></div>
-    <div class="logo-text"><span>Afrosonic</span> MDML385 Converter</div>
-  </div>
-  <div class="header-right">
-    <div class="legend">
-      <div class="legend-item"><div class="legend-dot orange"></div> manual field</div>
-      <div class="legend-item"><div class="legend-dot dim"></div> auto-mapped</div>
-    </div>
-    <div class="status-pill" id="statusPill">idle</div>
-  </div>
-</header>
-
-<div class="workspace">
-  <aside class="sidebar">
-    <div class="sidebar-section">
-      <div class="section-label">Import MDML385 Files</div>
-      <div class="drop-zone" id="dropZone">
-        <svg class="drop-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-          <path d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
-        </svg>
-        <div class="drop-text">
-          <strong>Drop MDML385 files here</strong>
-          or click to browse
-        </div>
-        <div class="drop-sub">.xlsx only · multiple files supported</div>
-      </div>
-      <input type="file" id="fileInput" accept=".xlsx" multiple>
-    </div>
-
-    <div class="sidebar-section" style="padding-bottom:8px;">
-      <div class="section-label">Queue <span id="queueCount" style="color:var(--accent)">0</span> files</div>
-    </div>
-    <div class="file-queue" id="fileQueue">
-      <div class="queue-empty" id="queueEmpty">No files loaded</div>
-    </div>
-
-    <div class="sidebar-footer">
-      <div class="track-count-summary" id="trackSummary">—</div>
-      <button class="btn btn-primary" id="exportBtn" disabled>
+<!-- ═══════════════════════════════════════════════════
+     SCREEN 1: LANDING
+════════════════════════════════════════════════════ -->
+<div class="screen landing-screen active" id="screenLanding">
+  <div class="landing-app-name">Mama Dance Metadata Sheet Converter</div>
+  <div class="landing-hero">
+    <div class="landing-title">Convert your tracks.<br>Export <span>ready to submit</span>.</div>
+    <div class="landing-sub">Drop one or more source Excel files to get started.<br>We'll map them to your chosen destination format.</div>
+    <div class="landing-drop-zone" id="landingDropZone">
+      <svg class="landing-drop-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M9 13h6m-3-3v6m5 3H7a2 2 0 01-2-2V7a2 2 0 012-2h5l2 2h5a2 2 0 012 2v9a2 2 0 01-2 2z"/>
+      </svg>
+      <div class="landing-drop-text">Drop Excel files here</div>
+      <div class="landing-drop-sub">.xlsx files only · multiple files supported</div>
+      <button class="landing-browse-btn" id="landingBrowseBtn">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+          <path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"/>
         </svg>
-        Export Master .xlsx
+        Browse files
       </button>
-      <button class="btn btn-ghost" id="clearBtn" disabled>Clear all</button>
     </div>
-  </aside>
-
-  <main class="main">
-    <div class="main-toolbar">
-      <div class="toolbar-left">
-        <div class="tab-group">
-          <button class="tab active" data-view="preview">Preview</button>
-          <button class="tab" data-view="warnings">Warnings <span id="warnBadge" style="display:none;color:var(--accent)"></span></button>
-          <button class="tab" data-view="admin">⚙ Admin</button>
-        </div>
-      </div>
-      <div class="toolbar-right">
-        <input class="track-filter" type="text" id="searchFilter" placeholder="Filter tracks..." />
-      </div>
-    </div>
-    <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
-    <div class="table-container" id="tableContainer">
-      <div class="empty-state" id="emptyState">
-        <svg class="empty-state-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
-          <path d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
-        </svg>
-        <div class="empty-state-title">No data yet</div>
-        <div class="empty-state-sub">Drop one or more MDML385 .xlsx files into the queue to begin conversion</div>
-      </div>
-    </div>
-  </main>
+  </div>
 </div>
 
+<!-- ═══════════════════════════════════════════════════
+     SCREEN 2: FORMAT SELECTION
+════════════════════════════════════════════════════ -->
+<div class="screen format-screen" id="screenFormat">
+  <div class="format-header">
+    <h2>Select destination format</h2>
+    <p>Choose the format you want to convert your files into.</p>
+  </div>
+
+  <div class="format-files-summary" id="formatFilesSummary">
+    <span id="formatFilesText">0 files loaded</span>
+  </div>
+
+  <div class="format-cards">
+    <div class="format-card selected" id="cardAfrosonic" data-format="AFROSONIC">
+      <div class="format-card-icon">AF</div>
+      <div class="format-card-name">AFROSONIC</div>
+      <div class="format-card-desc">Afrosonic ingestion template for music library submission</div>
+      <div class="format-card-badge active">Available</div>
+    </div>
+
+    <div class="format-card locked" data-format="FORMAT_B">
+      <div class="format-card-icon">B</div>
+      <div class="format-card-name">Format B</div>
+      <div class="format-card-desc">Additional destination format — in development</div>
+      <div class="format-card-badge soon">Coming Soon</div>
+    </div>
+
+    <div class="format-card locked" data-format="FORMAT_C">
+      <div class="format-card-icon">C</div>
+      <div class="format-card-name">Format C</div>
+      <div class="format-card-desc">Additional destination format — in development</div>
+      <div class="format-card-badge soon">Coming Soon</div>
+    </div>
+  </div>
+
+  <div class="format-actions">
+    <button class="btn-back" id="formatBackBtn">← Back</button>
+    <button class="btn-continue" id="formatContinueBtn">Continue to workspace →</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     SCREEN 3: WORKSPACE
+════════════════════════════════════════════════════ -->
+<div class="workspace-screen" id="screenWorkspace">
+
+  <header class="ws-header">
+    <div class="ws-header-left">
+      <div class="ws-app-name">Mama Dance Metadata Sheet Converter</div>
+      <div class="ws-sep"></div>
+      <div class="ws-format-badge">
+        <div class="ws-format-dot"></div>
+        <span id="wsFormatLabel">AFROSONIC</span>
+      </div>
+    </div>
+    <div class="ws-header-right">
+      <div class="status-pill" id="statusPill">idle</div>
+    </div>
+  </header>
+
+  <div class="ws-body">
+    <aside class="sidebar">
+      <!-- Compact drop zone to add more files -->
+      <div class="sidebar-drop">
+        <div class="sidebar-drop-zone" id="sidebarDropZone">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 5v14M5 12h14"/>
+          </svg>
+          Add more files
+        </div>
+      </div>
+
+      <div class="sidebar-queue-header">
+        <div class="section-label">Files <span id="queueCount" style="color:var(--accent)">0</span></div>
+      </div>
+
+      <div class="file-queue" id="fileQueue">
+        <div class="queue-empty" id="queueEmpty">No files loaded</div>
+      </div>
+
+      <div class="sidebar-footer">
+        <div class="track-count-summary" id="trackSummary">—</div>
+        <button class="btn btn-primary" id="exportBtn" disabled>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+          </svg>
+          Export Master .xlsx
+        </button>
+        <button class="btn btn-ghost" id="clearBtn" disabled>Clear all</button>
+      </div>
+    </aside>
+
+    <main class="main">
+      <div class="main-toolbar">
+        <div class="toolbar-left">
+          <div class="tab-group">
+            <button class="tab active" data-view="preview">Preview</button>
+          </div>
+        </div>
+        <div class="toolbar-right">
+          <input class="track-filter" type="text" id="searchFilter" placeholder="Filter tracks…" />
+          <button class="icon-btn" id="adminToggleBtn" title="Settings">⚙</button>
+        </div>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+      <div class="table-container" id="tableContainer">
+        <div class="empty-state" id="emptyState">
+          <svg class="empty-state-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+            <path d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+          </svg>
+          <div class="empty-state-title">No data yet</div>
+          <div class="empty-state-sub">Add files using the sidebar to begin conversion</div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<input type="file" id="fileInput" accept=".xlsx" multiple>
 <div id="toast"></div>
 
 <script>
-const state = {
-  files: [],
-  view: 'preview',
-  filter: '',
-  editTypeMap: loadEditTypeMap(),
+// ─────────────────────────────────────────────────────
+// Constants — declared before state so they're available immediately
+// ─────────────────────────────────────────────────────
+
+const DEFAULT_EDITTYPE_MAP = {
+  '30': '30 Second Edit',
+  '60': '60 Second Edit',
+  '20': '20 Second Edit',
+  '15': '15 Second Edit',
+  '10': '10 Second Edit',
+  'Stil': 'Sting/Ident',
+  'Hit': 'Hit',
+  'Ful': 'Full'
 };
 
-// Load EditType mappings from localStorage or use defaults
+// ─────────────────────────────────────────────────────
+// Field mapping schema — default definitions
+// ─────────────────────────────────────────────────────
+
+function buildDefaultFieldMapping() {
+  const m = [];
+
+  // ── Album fields ──
+  m.push(
+    { dest: 'Column Name',            type: 'hardcoded', value: null,                       group: 'Album',          notes: 'Reserved column, always blank' },
+    { dest: 'Label Prefix',           type: 'hardcoded', value: 'AFRS',                     group: 'Album',          notes: 'Label prefix code' },
+    { dest: 'Label Name',             type: 'hardcoded', value: 'AFROSONIC',                group: 'Album',          notes: 'Full label name' },
+    { dest: 'Album Prefix',           type: 'hardcoded', value: null,                       group: 'Album',          notes: '' },
+    { dest: 'Album Catalogue Number', type: 'hardcoded', value: null,                       group: 'Album',          notes: 'Fill in manually after export' },
+    { dest: 'Album Suffix',           type: 'hardcoded', value: null,                       group: 'Album',          notes: '' },
+    { dest: 'Album Overide',          type: 'hardcoded', value: null,                       group: 'Album',          notes: '' },
+    { dest: 'Album Title',            type: 'direct',    source: 'ALBUM: Title',            group: 'Album',          transform: 'none',     notes: '' },
+    { dest: 'Album Description',      type: 'direct',    source: 'ALBUM: Description',      group: 'Album',          transform: 'none',     notes: '' },
+    { dest: 'Release Date',           type: 'direct',    source: 'ALBUM: Release Date',     group: 'Album',          transform: 'date',     notes: 'Excel serial → M/D/YYYY' },
+    { dest: 'Album Categories',       type: 'hardcoded', value: null,                       group: 'Album',          notes: '' },
+  );
+
+  // ── Track fields ──
+  m.push(
+    { dest: 'Track No',           type: 'direct',   source: 'TRACK: Number',          group: 'Track', transform: 'none',     notes: '' },
+    { dest: 'Is this the Work',   type: 'computed', source: 'TRACK: Is Main',         group: 'Track',                        notes: '"Y" for main tracks, "N" for alternate versions' },
+    { dest: 'Work Name',          type: 'computed', source: 'TRACK: Title',           group: 'Track',                        notes: 'Main track: full title. Alt track: version suffixes stripped' },
+    { dest: 'Work Description',   type: 'computed', source: 'TRACK: Description',     group: 'Track',                        notes: 'Populated for main tracks only' },
+    { dest: 'Version Type',       type: 'computed', source: 'TRACK: Title',           group: 'Track',                        notes: 'Derived from title suffix (_Instrumental, _No_Drums, etc.)' },
+    { dest: 'Version Description',type: 'computed', source: 'TRACK: Title',           group: 'Track',                        notes: 'Derived from title patterns + EditType code mappings' },
+    { dest: 'EditType',           type: 'computed', source: 'TRACK: Audio Filename',  group: 'Track',                        notes: 'Code from filename suffix — configure in EditType Codes tab' },
+    { dest: 'Duration',           type: 'direct',   source: 'TRACK: Duration',        group: 'Track', transform: 'duration', notes: 'Excel time fraction → total seconds' },
+    { dest: 'BPM',                type: 'direct',   source: 'TRACK: BPM',             group: 'Track', transform: 'none',     notes: '' },
+  );
+
+  // ── Writers 1–10 ──
+  for (let i = 1; i <= 10; i++) {
+    m.push(
+      { dest: `Comp Surname ${i}`,      type: 'direct',   source: `WRITER:${i}: Last Name`,                  group: 'Writers', transform: 'none', notes: '' },
+      { dest: `Comp Forename ${i}`,     type: 'computed', source: `WRITER:${i}: First Name + Middle Name`,   group: 'Writers',                   notes: 'First Name and Middle Name joined with a space' },
+      { dest: `Composer ${i} Society`,  type: 'direct',   source: `WRITER:${i}: Society`,                    group: 'Writers', transform: 'none', notes: '' },
+      { dest: `Composer ${i} CAE`,      type: 'direct',   source: `WRITER:${i}: IPI`,                        group: 'Writers', transform: 'none', notes: 'IPI number (CAE/IPI)' },
+      { dest: `Comp Split${i} %`,       type: 'direct',   source: `WRITER:${i}: Owner Performance Share %`,  group: 'Writers', transform: 'none', notes: '' },
+      { dest: `Composer ${i} Capacity`, type: 'direct',   source: `WRITER:${i}: Capacity`,                   group: 'Writers', transform: 'none', notes: '' },
+    );
+  }
+
+  // ── Publishers 1–6 ──
+  for (let i = 1; i <= 6; i++) {
+    m.push(
+      { dest: `Publisher ${i} Name`,        type: 'direct', source: `PUBLISHER:${i}: Name`,                      group: 'Publishers', transform: 'none', notes: '' },
+      { dest: `Publisher ${i} Affiliation`, type: 'direct', source: `PUBLISHER:${i}: Society`,                    group: 'Publishers', transform: 'none', notes: '' },
+      { dest: `Publisher ${i} Split`,       type: 'direct', source: `PUBLISHER:${i}: Owner Performance Share %`,  group: 'Publishers', transform: 'none', notes: '' },
+    );
+  }
+
+  // ── Classification & Technical ──
+  m.push(
+    { dest: 'ISWC',             type: 'direct',    source: 'CODE: ISWC',              group: 'Classification', transform: 'none',  notes: '' },
+    { dest: 'ISRC',             type: 'direct',    source: 'CODE: ISRC',              group: 'Classification', transform: 'isrc',  notes: 'Reformatted to CC-LLL-YY-NNNNN' },
+    { dest: 'Lyrics',           type: 'direct',    source: 'TRACK: Lyrics',           group: 'Classification', transform: 'none',  notes: '' },
+    { dest: 'Instruments',      type: 'direct',    source: 'TRACK: Instrumentation',  group: 'Classification', transform: 'none',  notes: '' },
+    { dest: 'Country List',     type: 'hardcoded', value: 'African;South Africa',     group: 'Classification',                     notes: 'Semicolon-separated territory list' },
+    { dest: "Era's",            type: 'hardcoded', value: null,                       group: 'Classification',                     notes: '' },
+    { dest: 'Moods',            type: 'computed',  source: 'TRACK: Keywords',         group: 'Classification',                     notes: 'Main tracks only: keywords before "African" tag, semicolon-separated' },
+    { dest: 'Music For',        type: 'computed',  source: 'TRACK: Keywords',         group: 'Classification',                     notes: 'Keywords matching known Music For tags, semicolon-separated' },
+    { dest: 'Music Styles',     type: 'hardcoded', value: null,                       group: 'Classification',                     notes: '' },
+    { dest: 'Tempos',           type: 'hardcoded', value: null,                       group: 'Classification',                     notes: 'Fill in manually after export' },
+    { dest: 'Well Known Tunes', type: 'hardcoded', value: null,                       group: 'Classification',                     notes: '' },
+    { dest: 'Style-Alikes',     type: 'hardcoded', value: null,                       group: 'Classification',                     notes: '' },
+    { dest: 'Music Key',        type: 'hardcoded', value: null,                       group: 'Classification',                     notes: '' },
+    { dest: 'Artwork',          type: 'direct',    source: 'ALBUM: Artwork Filename', group: 'Technical',      transform: 'none',  notes: '' },
+    { dest: 'Audio File Name',  type: 'computed',  source: 'TRACK: Audio Filename',   group: 'Technical',                          notes: 'Filename with .wav extension appended' },
+  );
+
+  return m;
+}
+
+function buildSourceFields() {
+  const fields = [
+    '(none)',
+    'ALBUM: Code', 'ALBUM: Title', 'ALBUM: Description', 'ALBUM: Release Date', 'ALBUM: Artwork Filename',
+    'TRACK: Number', 'TRACK: Title', 'TRACK: Is Main', 'TRACK: Description',
+    'TRACK: Duration', 'TRACK: BPM', 'TRACK: Audio Filename', 'TRACK: Keywords',
+    'TRACK: Lyrics', 'TRACK: Instrumentation',
+    'CODE: ISWC', 'CODE: ISRC',
+  ];
+  for (let i = 1; i <= 10; i++) {
+    fields.push(
+      `WRITER:${i}: First Name`, `WRITER:${i}: Middle Name`, `WRITER:${i}: Last Name`,
+      `WRITER:${i}: Society`, `WRITER:${i}: IPI`,
+      `WRITER:${i}: Owner Performance Share %`, `WRITER:${i}: Capacity`
+    );
+  }
+  for (let i = 1; i <= 6; i++) {
+    fields.push(
+      `PUBLISHER:${i}: Name`, `PUBLISHER:${i}: Society`, `PUBLISHER:${i}: Owner Performance Share %`
+    );
+  }
+  return fields;
+}
+
+function loadFieldMapping() {
+  try {
+    const saved = localStorage.getItem('afrosonic_field_mapping');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed) && parsed.length >= 20) return parsed;
+    }
+  } catch (e) {
+    console.warn('Failed to load field mapping from localStorage');
+  }
+  return buildDefaultFieldMapping();
+}
+
+function saveFieldMapping(mapping) {
+  try {
+    localStorage.setItem('afrosonic_field_mapping', JSON.stringify(mapping));
+    state.fieldMapping = mapping;
+  } catch (e) {
+    console.error('Failed to save field mapping to localStorage');
+  }
+}
+
+// ─────────────────────────────────────────────────────
+// App state
+// ─────────────────────────────────────────────────────
+
+const state = {
+  phase: 'landing',       // 'landing' | 'format' | 'workspace'
+  selectedFormat: 'AFROSONIC',
+  pendingFiles: [],       // files held between landing and format selection
+  files: [],
+  view: 'preview',        // 'preview' | 'admin'
+  filter: '',
+  editTypeMap: loadEditTypeMap(),
+  fieldMapping: loadFieldMapping(),
+};
+
+const emptyStateEl = document.getElementById('emptyState');
+
+// ─────────────────────────────────────────────────────
+// EditType persistence
+// ─────────────────────────────────────────────────────
+
 function loadEditTypeMap() {
   try {
     const saved = localStorage.getItem('afrosonic_edittype_map');
-    if (saved) {
-      return JSON.parse(saved);
-    }
+    if (saved) return JSON.parse(saved);
   } catch (e) {
     console.warn('Failed to load EditType map from localStorage');
   }
   return { ...DEFAULT_EDITTYPE_MAP };
 }
 
-// Save EditType mappings to localStorage
 function saveEditTypeMap(map) {
   try {
     localStorage.setItem('afrosonic_edittype_map', JSON.stringify(map));
@@ -575,6 +1224,10 @@ function saveEditTypeMap(map) {
     console.error('Failed to save EditType map to localStorage');
   }
 }
+
+// ─────────────────────────────────────────────────────
+// Output column definitions
+// ─────────────────────────────────────────────────────
 
 const AFRO_COLS = [
   'Column Name','Label Prefix','Label Name','Album Prefix','Album Catalogue Number',
@@ -602,20 +1255,6 @@ const AFRO_COLS = [
   'Artwork','Audio File Name'
 ];
 
-const MANUAL_COLS = new Set(['Album Catalogue Number','Version Type','Music For','Music Styles','Tempos','Country List']);
-
-// Default EditType mappings - can be customized in admin section
-const DEFAULT_EDITTYPE_MAP = {
-  '30': '30 Second Edit',
-  '60': '60 Second Edit',
-  '20': '20 Second Edit',
-  '15': '15 Second Edit',
-  '10': '10 Second Edit',
-  'Stil': 'Sting/Ident',
-  'Hit': 'Hit',
-  'Ful': 'Full'
-};
-
 const PREVIEW_COLS = [
   'Track No','Is this the Work','Work Name','Version Type','EditType','Duration','BPM',
   'Comp Surname 1','Comp Forename 1','Comp Split1 %',
@@ -623,15 +1262,6 @@ const PREVIEW_COLS = [
   'Publisher 1 Name','Publisher 1 Affiliation','Publisher 1 Split',
   'ISRC','Moods','Music For','Tempos','Audio File Name'
 ];
-
-const MOOD_TAGS = new Set([
-  'Aggressive','Bold','Hi-Energy','Bright','Driving','Punchy','Dynamic','Building',
-  'Tense','Emotional','Uplifting','Playful','Dark','Mysterious','Melancholic',
-  'Energetic','Calm','Romantic','Suspenseful','Epic','Triumphant','Sad','Happy',
-  'Quirky','Powerful','Inspiring','Laid-back','Groovy','Atmospheric','Hypnotic',
-  'Energetic/Lively','Adventurous','Dramatic','Fierce','Euphoric','Wistful',
-  'Reflective','Joyful','Majestic','Intense','Upbeat','Delicate/Gentle'
-]);
 
 const MUSIC_FOR_TAGS = new Set([
   'Youth Energy','Youth Lifestyle','Football/Soccer','Party','Action','Urban Drama',
@@ -642,22 +1272,21 @@ const MUSIC_FOR_TAGS = new Set([
   'Computer/Arcade Games'
 ]);
 
+// ─────────────────────────────────────────────────────
+// Parsing helpers
+// ─────────────────────────────────────────────────────
+
 function reformatISRC(isrc) {
   if (!isrc) return null;
   const s = String(isrc).trim().replace(/-/g, '');
-  if (s.length === 12) {
-    return `${s.slice(0,2)}-${s.slice(2,5)}-${s.slice(5,7)}-${s.slice(7,12)}`;
-  }
+  if (s.length === 12) return `${s.slice(0,2)}-${s.slice(2,5)}-${s.slice(5,7)}-${s.slice(7,12)}`;
   return isrc;
 }
 
 function formatReleaseDate(val) {
   if (!val) return null;
   let d;
-  // With raw:true and cellDates:false, dates arrive as Excel serial numbers (e.g. 45769)
   if (typeof val === 'number') {
-    // Excel epoch is Jan 1 1900; JS epoch is Jan 1 1970. Offset = 25569 days.
-    // Also account for Excel's leap year bug (it thinks 1900 was a leap year).
     d = new Date(Math.round((val - 25569) * 86400 * 1000));
   } else if (val instanceof Date) {
     d = val;
@@ -670,26 +1299,16 @@ function formatReleaseDate(val) {
 
 function durationToSeconds(val) {
   if (val == null) return null;
-
-  // With raw:true and cellDates:false, Excel time values always arrive as a decimal
-  // fraction of one day. e.g. 04:41 stored as HH:MM gives 0.19514... 
-  // Multiply by 86400 to get total seconds in HH:MM:SS space.
-  // Harvest stores duration as MM:SS but Excel treats it as HH:MM:SS, so:
-  //   floor(totalRawSecs / 3600) = what Excel calls "hours"  = our MINUTES
-  //   floor((totalRawSecs % 3600) / 60) = what Excel calls "minutes" = our SECONDS
   if (typeof val === 'number' && val > 0 && val < 1) {
     const totalRawSecs = Math.round(val * 86400);
     const mins = Math.floor(totalRawSecs / 3600);
     const secs = Math.floor((totalRawSecs % 3600) / 60);
     return mins * 60 + secs;
   }
-
-  // String fallback e.g. "04:41" — treat first segment as minutes
   if (typeof val === 'string') {
     const parts = val.trim().split(':').map(Number);
     if (parts.length >= 2) return parts[0] * 60 + parts[1];
   }
-
   return null;
 }
 
@@ -704,11 +1323,7 @@ function getEditType(audioFilename) {
   else if (/_10[_\s]|_10$/.test(f)) code = '10';
   else if (/STIL|STING|IDENT/.test(f)) code = 'Stil';
   else if (/HIT/.test(f)) code = 'Hit';
-  
-  return {
-    code: code,
-    description: state.editTypeMap[code] || state.editTypeMap['Ful'] || 'Full'
-  };
+  return { code, description: state.editTypeMap[code] || state.editTypeMap['Ful'] || 'Full' };
 }
 
 function getVersionType(title, isMain) {
@@ -734,7 +1349,6 @@ function getWorkName(title, isMain) {
 
 function getMoods(keywords) {
   if (!keywords) return null;
-  // Only take moods before "African" tag
   const parts = String(keywords).split(',').map(k => k.trim());
   const moods = [];
   for (const part of parts) {
@@ -744,16 +1358,8 @@ function getMoods(keywords) {
   return moods.length ? moods.join(';') : null;
 }
 
-function getMusicFor(musicFor) {
-  if (!musicFor) return null;
-  // Convert comma-separated to semicolon-separated, preserving all values
-  const parts = String(musicFor).split(',').map(k => k.trim()).filter(k => k);
-  return parts.length ? parts.join(';') : null;
-}
-
 function getMusicForFromKeywords(keywords) {
   if (!keywords) return null;
-  // Extract Music For tags from keywords (tags like Youth Energy, Action, Urban Drama, Promos, etc.)
   const parts = String(keywords).split(',').map(k => k.trim());
   const musicFor = parts.filter(p => MUSIC_FOR_TAGS.has(p));
   return musicFor.length ? musicFor.join(';') : null;
@@ -764,18 +1370,15 @@ function safeStr(val) {
   return val;
 }
 
-function parseMDML385Sheet(sheetData) {
-  const rows = sheetData.filter(r => r['TRACK: Title']);
-  
-  const parentDesc = {};
-  rows.forEach(r => {
-    if (r['TRACK: Is Main'] === 'Y') {
-      const wn = String(r['TRACK: Title']);
-      parentDesc[wn] = r['TRACK: Description'] || null;
-    }
-  });
+// ─────────────────────────────────────────────────────
+// Source sheet parsing
+// ─────────────────────────────────────────────────────
 
-  return rows.map((row, idx) => {
+function parseSourceSheet(sheetData) {
+  const rows = sheetData.filter(r => r['TRACK: Title']);
+  const mapping = state.fieldMapping;
+
+  return rows.map(row => {
     const isMain = row['TRACK: Is Main'] === 'Y' ? 'Y' : 'N';
     const title = String(row['TRACK: Title'] || '');
     const workName = getWorkName(title, isMain);
@@ -783,86 +1386,53 @@ function parseMDML385Sheet(sheetData) {
     const kw = row['TRACK: Keywords'] || '';
 
     const r = {};
-    r['Column Name'] = null;
-    r['Label Prefix'] = 'AFRS';
-    r['Label Name'] = 'AFROSONIC';
-    r['Album Prefix'] = null;
-    r['Album Catalogue Number'] = null;
-    r['Album Suffix'] = null;
-    r['Album Overide'] = null;
-    r['Album Title'] = safeStr(row['ALBUM: Title']);
-    r['Album Description'] = safeStr(row['ALBUM: Description']);
-    r['Release Date'] = formatReleaseDate(row['ALBUM: Release Date']);
-    r['Album Categories'] = null;
-    r['Track No'] = row['TRACK: Number'];
+
+    // ── Apply configurable direct and hardcoded mappings ──
+    mapping.forEach(m => {
+      if (m.type === 'hardcoded') {
+        r[m.dest] = (m.value !== null && m.value !== undefined && m.value !== '') ? m.value : null;
+      } else if (m.type === 'direct') {
+        if (m.transform === 'date')     r[m.dest] = formatReleaseDate(row[m.source]);
+        else if (m.transform === 'duration') r[m.dest] = durationToSeconds(row[m.source]);
+        else if (m.transform === 'isrc')    r[m.dest] = reformatISRC(row[m.source]);
+        else                                r[m.dest] = safeStr(row[m.source]);
+      }
+      // 'computed' entries are handled explicitly below
+    });
+
+    // ── Computed fields (complex logic) ──
     r['Is this the Work'] = isMain;
-    
     r['Work Name'] = workName;
-    
-    // For main tracks, use description. For alt tracks, it should remain blank.
-    if (isMain === 'Y') {
-      r['Work Description'] = safeStr(row['TRACK: Description']) || null;
-    } else {
-      r['Work Description'] = null;
-    }
-    
+    r['Work Description'] = isMain === 'Y' ? (safeStr(row['TRACK: Description']) || null) : null;
     r['Version Type'] = getVersionType(title, isMain);
+
     const editTypeInfo = getEditType(audioFile);
     r['EditType'] = editTypeInfo.code;
-    
-    // For alt tracks, extract version info from title into Version Description
-    // For main tracks, use the EditType mapping
+
     if (isMain === 'N') {
       let versionDesc = null;
       if (/_DRUMS[_\s]&[_\s]BASS|_DRUMS_BASS/i.test(title)) versionDesc = 'Drums & Bass Mix';
-      else if (/_NO[_\s]DRUMS/i.test(title)) versionDesc = 'No Drums Mix';
-      else if (/_NO[_\s]VOCALS/i.test(title)) versionDesc = 'No Vocals Mix';
-      else if (/_INSTRUMENTAL/i.test(title)) versionDesc = 'Instrumental Mix';
-      else if (/_UNDERSCORE/i.test(title)) versionDesc = 'Underscore Mix';
-      else if (/_30[_\s]|_30$/i.test(title)) versionDesc = '30 Second Edit';
-      else if (/_60[_\s]|_60$/i.test(title)) versionDesc = '60 Second Edit';
+      else if (/_NO[_\s]DRUMS/i.test(title))    versionDesc = 'No Drums Mix';
+      else if (/_NO[_\s]VOCALS/i.test(title))   versionDesc = 'No Vocals Mix';
+      else if (/_INSTRUMENTAL/i.test(title))    versionDesc = 'Instrumental Mix';
+      else if (/_UNDERSCORE/i.test(title))      versionDesc = 'Underscore Mix';
+      else if (/_30[_\s]|_30$/i.test(title))    versionDesc = '30 Second Edit';
+      else if (/_60[_\s]|_60$/i.test(title))    versionDesc = '60 Second Edit';
       r['Version Description'] = versionDesc || editTypeInfo.description;
     } else {
       r['Version Description'] = editTypeInfo.description;
     }
-    r['Duration'] = durationToSeconds(row['TRACK: Duration']);
-    r['BPM'] = safeStr(row['TRACK: BPM']);
 
+    // Writer forenames: concatenate First Name + Middle Name
     for (let i = 1; i <= 10; i++) {
       const fn = row[`WRITER:${i}: First Name`];
       const mn = row[`WRITER:${i}: Middle Name`];
-      const ln = row[`WRITER:${i}: Last Name`];
       const forenameArr = [fn, mn].filter(x => x != null && x !== '' && x !== undefined);
-      r[`Comp Surname ${i}`] = safeStr(ln);
       r[`Comp Forename ${i}`] = forenameArr.length ? forenameArr.join(' ') : null;
-      r[`Composer ${i} Society`] = safeStr(row[`WRITER:${i}: Society`]);
-      r[`Composer ${i} CAE`] = safeStr(row[`WRITER:${i}: IPI`]);
-      r[`Comp Split${i} %`] = safeStr(row[`WRITER:${i}: Owner Performance Share %`]);
-      r[`Composer ${i} Capacity`] = safeStr(row[`WRITER:${i}: Capacity`]);
     }
 
-    for (let i = 1; i <= 6; i++) {
-      r[`Publisher ${i} Name`] = safeStr(row[`PUBLISHER:${i}: Name`]);
-      r[`Publisher ${i} Affiliation`] = safeStr(row[`PUBLISHER:${i}: Society`]);
-      r[`Publisher ${i} Split`] = safeStr(row[`PUBLISHER:${i}: Owner Performance Share %`]);
-    }
-
-    r['ISWC'] = safeStr(row['CODE: ISWC']);
-    r['ISRC'] = reformatISRC(row['CODE: ISRC']);
-    r['Lyrics'] = safeStr(row['TRACK: Lyrics']);
-    r['Instruments'] = safeStr(row['TRACK: Instrumentation']);
-    r['Country List'] = 'African;South Africa';
-    r["Era's"] = null;
-    // Only apply moods to main tracks
     r['Moods'] = isMain === 'Y' ? getMoods(kw) : null;
-    // Extract Music For from Keywords (tags like Youth Energy, Action, Urban Drama, Promos, etc.)
     r['Music For'] = getMusicForFromKeywords(kw);
-    r['Music Styles'] = null;
-    r['Tempos'] = null; // Manual input field - left blank for user entry
-    r['Well Known Tunes'] = null;
-    r['Style-Alikes'] = null;
-    r['Music Key'] = null;
-    r['Artwork'] = safeStr(row['ALBUM: Artwork Filename']);
     r['Audio File Name'] = audioFile ? `${audioFile}.wav` : null;
 
     return r;
@@ -874,19 +1444,16 @@ function processFile(file) {
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
-        // Read once with raw:true and no cellDates — gives us pure values:
-        // Duration as a decimal fraction (e.g. 0.003252), dates as serial numbers,
-        // and text fields like Tempo as their actual full string with no truncation.
         const wb = XLSX.read(e.target.result, { type: 'array', cellDates: false });
         const ws = wb.Sheets[wb.SheetNames[0]];
         const merged = XLSX.utils.sheet_to_json(ws, { defval: null, raw: true });
 
         if (!merged.length || !merged[0]['ALBUM: Code']) {
-          reject(new Error(`"${file.name}" doesn't look like an MDML385 file`));
+          reject(new Error(`"${file.name}" doesn't appear to be a valid source file`));
           return;
         }
 
-        const tracks = parseMDML385Sheet(merged);
+        const tracks = parseSourceSheet(merged);
         const albumCode = merged[0]['ALBUM: Code'] || file.name.replace('.xlsx','');
         const albumTitle = merged[0]['ALBUM: Title'] || '(untitled)';
         const mainTracks = tracks.filter(t => t['Is this the Work'] === 'Y').length;
@@ -909,35 +1476,32 @@ function processFile(file) {
   });
 }
 
-function buildWarnings() {
-  const warnings = [];
-  state.files.forEach(file => {
-    file.tracks.forEach(t => {
-      if (!t['ISRC']) warnings.push({ file: file.code, track: t['Work Name'], field: 'ISRC', msg: 'Missing ISRC' });
-      if (!t['Comp Surname 1']) warnings.push({ file: file.code, track: t['Work Name'], field: 'Composer', msg: 'No composer data' });
-      if (!t['Publisher 1 Name']) warnings.push({ file: file.code, track: t['Work Name'], field: 'Publisher', msg: 'No publisher data' });
-      if (!t['Moods']) warnings.push({ file: file.code, track: t['Work Name'], field: 'Moods', msg: 'No moods mapped' });
-    });
-  });
-  return warnings;
+// ─────────────────────────────────────────────────────
+// Phase / screen navigation
+// ─────────────────────────────────────────────────────
+
+function showScreen(phase) {
+  state.phase = phase;
+  document.getElementById('screenLanding').classList.toggle('active', phase === 'landing');
+  document.getElementById('screenFormat').classList.toggle('active', phase === 'format');
+  document.getElementById('screenWorkspace').classList.toggle('active', phase === 'workspace');
+  // workspace uses its own class
+  document.getElementById('screenWorkspace').style.display = phase === 'workspace' ? 'flex' : 'none';
 }
 
-// Column resize functionality
-let resizing = null;
-let startX = 0;
-let startWidth = 0;
+// ─────────────────────────────────────────────────────
+// Column resize
+// ─────────────────────────────────────────────────────
+
+let resizing = null, startX = 0, startWidth = 0;
 
 function initColumnResize(th) {
   const handle = document.createElement('div');
   handle.className = 'resize-handle';
   th.appendChild(handle);
-  
   handle.addEventListener('mousedown', (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    resizing = th;
-    startX = e.pageX;
-    startWidth = th.offsetWidth;
+    e.preventDefault(); e.stopPropagation();
+    resizing = th; startX = e.pageX; startWidth = th.offsetWidth;
     handle.classList.add('resizing');
     document.body.style.cursor = 'col-resize';
     document.body.style.userSelect = 'none';
@@ -949,20 +1513,13 @@ document.addEventListener('mousemove', (e) => {
   const diff = e.pageX - startX;
   const newWidth = Math.max(60, startWidth + diff);
   const colIndex = Array.from(resizing.parentNode.children).indexOf(resizing);
-  
-  // Update header
   resizing.style.width = newWidth + 'px';
   resizing.style.minWidth = newWidth + 'px';
-  
-  // Update all cells in this column
   const table = resizing.closest('table');
   if (table) {
     table.querySelectorAll('tbody tr:not(.album-separator)').forEach(row => {
       const cell = row.children[colIndex];
-      if (cell) {
-        cell.style.width = newWidth + 'px';
-        cell.style.minWidth = newWidth + 'px';
-      }
+      if (cell) { cell.style.width = newWidth + 'px'; cell.style.minWidth = newWidth + 'px'; }
     });
   }
 });
@@ -975,6 +1532,10 @@ document.addEventListener('mouseup', () => {
     document.body.style.userSelect = '';
   }
 });
+
+// ─────────────────────────────────────────────────────
+// Render functions
+// ─────────────────────────────────────────────────────
 
 function renderQueue() {
   const qe = document.getElementById('queueEmpty');
@@ -1006,7 +1567,7 @@ function renderQueue() {
   });
 
   if (totalTracks > 0) {
-    summary.innerHTML = `<span>${totalTracks}</span> total tracks across <span>${state.files.length}</span> file${state.files.length > 1 ? 's' : ''}`;
+    summary.innerHTML = `<span>${totalTracks}</span> tracks across <span>${state.files.length}</span> file${state.files.length > 1 ? 's' : ''}`;
   } else {
     summary.textContent = '—';
   }
@@ -1017,23 +1578,19 @@ function renderQueue() {
 
 function renderTable() {
   const container = document.getElementById('tableContainer');
-  const emptyState = document.getElementById('emptyState');
-  const warnBadge = document.getElementById('warnBadge');
+  container.style.overflow = ''; // reset in case admin panel locked it
 
   if (state.files.length === 0) {
-    emptyState.style.display = 'flex';
+    emptyStateEl.style.display = 'flex';
     container.innerHTML = '';
-    container.appendChild(emptyState);
+    container.appendChild(emptyStateEl);
     return;
   }
 
-  emptyState.style.display = 'none';
+  // Detach emptyStateEl before any innerHTML clear to protect it
+  if (emptyStateEl.parentNode === container) container.removeChild(emptyStateEl);
+  emptyStateEl.style.display = 'none';
 
-  if (state.view === 'warnings') {
-    renderWarningsView(container);
-    return;
-  }
-  
   if (state.view === 'admin') {
     renderAdminView(container);
     return;
@@ -1051,16 +1608,12 @@ function renderTable() {
   numTh.style.width = '40px';
   numTh.style.minWidth = '40px';
   headerRow.appendChild(numTh);
-  
+
   cols.forEach(col => {
     const th = document.createElement('th');
     th.textContent = col;
     th.style.minWidth = '100px';
     th.style.width = '120px';
-    if (MANUAL_COLS.has(col)) {
-      th.classList.add('col-orange');
-      th.innerHTML += '<span class="req-dot"></span>';
-    }
     initColumnResize(th);
     headerRow.appendChild(th);
   });
@@ -1070,7 +1623,7 @@ function renderTable() {
   const tbody = document.createElement('tbody');
   let globalIdx = 1;
 
-  state.files.forEach((file, fileIdx) => {
+  state.files.forEach(file => {
     const sepRow = document.createElement('tr');
     sepRow.className = 'album-separator';
     const sepTd = document.createElement('td');
@@ -1094,16 +1647,13 @@ function renderTable() {
       cols.forEach(col => {
         const td = document.createElement('td');
         const val = track[col];
-
         if (val === null || val === undefined || val === '') {
-          td.className = MANUAL_COLS.has(col) ? 'manual-cell' : 'empty-cell';
-          td.textContent = MANUAL_COLS.has(col) ? '—' : '';
+          td.className = 'empty-cell';
+          td.textContent = '';
         } else {
           td.textContent = String(val);
           if (col === 'Is this the Work' && val === 'Y') td.className = 'is-work-y';
-          if (MANUAL_COLS.has(col)) td.style.background = 'var(--accent-light)';
         }
-
         td.title = val != null ? String(val) : '';
         tr.appendChild(td);
       });
@@ -1113,113 +1663,253 @@ function renderTable() {
   });
 
   table.appendChild(tbody);
-
-  const warnings = buildWarnings();
-  if (warnings.length > 0) {
-    warnBadge.textContent = ` (${warnings.length})`;
-    warnBadge.style.display = 'inline';
-  } else {
-    warnBadge.style.display = 'none';
-  }
-
-  container.innerHTML = '';
-  container.appendChild(table);
-}
-
-function renderWarningsView(container) {
-  const warnings = buildWarnings();
-  if (!warnings.length) {
-    container.innerHTML = '<div class="empty-state" style="display:flex"><div class="empty-state-title" style="color:var(--success)">✓ No issues found</div></div>';
-    return;
-  }
-  const table = document.createElement('table');
-  const thead = document.createElement('thead');
-  const headerRow = document.createElement('tr');
-  ['File','Track','Field','Issue'].forEach(col => {
-    const th = document.createElement('th');
-    th.textContent = col;
-    th.style.minWidth = '100px';
-    th.style.width = '150px';
-    initColumnResize(th);
-    headerRow.appendChild(th);
-  });
-  thead.appendChild(headerRow);
-  table.appendChild(thead);
-  const tbody = document.createElement('tbody');
-  warnings.forEach(w => {
-    const tr = document.createElement('tr');
-    tr.innerHTML = `<td>${w.file}</td><td>${w.track}</td><td style="color:var(--accent)">${w.field}</td><td>${w.msg}</td>`;
-    tbody.appendChild(tr);
-  });
-  table.appendChild(tbody);
   container.innerHTML = '';
   container.appendChild(table);
 }
 
 function renderAdminView(container) {
+  container.style.overflow = 'hidden';
+
   const adminDiv = document.createElement('div');
-  adminDiv.style.padding = '24px';
-  adminDiv.style.maxWidth = '800px';
-  
+  adminDiv.className = 'admin-panel';
   adminDiv.innerHTML = `
-    <h2 style="font-size:18px;font-weight:600;margin-bottom:8px;color:var(--text)">EditType → Version Description Mappings</h2>
-    <p style="font-size:13px;color:var(--text-muted);margin-bottom:20px">Configure how EditType codes map to Version Description values. Any EditType not in this list will default to "Full".</p>
-    
-    <div id="editTypeMappings" style="margin-bottom:20px"></div>
-    
-    <div style="display:flex;gap:8px;margin-bottom:24px">
-      <input type="text" id="newEditTypeCode" placeholder="EditType code (e.g. 15)" style="flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-family:var(--font);font-size:13px">
-      <input type="text" id="newEditTypeDesc" placeholder="Version Description (e.g. 15 Second Edit)" style="flex:2;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-family:var(--font);font-size:13px">
-      <button id="addEditTypeBtn" class="btn btn-primary" style="width:auto;padding:8px 16px">Add</button>
+    <div class="admin-tabs">
+      <button class="admin-tab active" data-tab="mapping">Field Mapping</button>
+      <button class="admin-tab" data-tab="edittype">EditType Codes</button>
     </div>
-    
-    <div style="display:flex;gap:8px">
-      <button id="resetEditTypeBtn" class="btn btn-ghost">Reset to Defaults</button>
-      <button id="saveEditTypeBtn" class="btn btn-primary">Save Changes</button>
-    </div>
+    <div class="admin-tab-content" id="adminTabMapping"></div>
+    <div class="admin-tab-content hidden" id="adminTabEditType"></div>
   `;
-  
+
   container.innerHTML = '';
   container.appendChild(adminDiv);
-  
+
+  renderFieldMappingTab(document.getElementById('adminTabMapping'));
+  renderEditTypeTab(document.getElementById('adminTabEditType'));
+
+  adminDiv.querySelectorAll('.admin-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      adminDiv.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      const which = tab.dataset.tab;
+      document.getElementById('adminTabMapping').classList.toggle('hidden', which !== 'mapping');
+      document.getElementById('adminTabEditType').classList.toggle('hidden', which !== 'edittype');
+    });
+  });
+}
+
+function renderFieldMappingTab(container) {
+  const SOURCE_FIELDS = buildSourceFields();
+
+  container.innerHTML = `
+    <div class="admin-format-bar">
+      <span>Editing mappings for:</span>
+      <span class="admin-format-chip">Harvest MDML385</span>
+      <span style="color:var(--text-muted);font-size:16px;line-height:1">→</span>
+      <span class="admin-format-chip dest">AFROSONIC</span>
+    </div>
+    <div class="admin-search-bar">
+      <input class="admin-search" type="text" id="mappingSearch" placeholder="Search by field name, source, or notes…" />
+      <span style="font-size:11px;color:var(--text-muted)" id="mappingCountLabel"></span>
+    </div>
+    <div class="mapping-scroll">
+      <table class="mapping-table">
+        <thead>
+          <tr>
+            <th style="width:210px">Destination Field</th>
+            <th style="width:88px">Type</th>
+            <th style="width:280px">Source / Value</th>
+            <th style="width:110px">Transform</th>
+            <th>Notes</th>
+          </tr>
+        </thead>
+        <tbody id="mappingTbody"></tbody>
+      </table>
+    </div>
+    <div class="admin-mapping-footer">
+      <button class="btn btn-primary" id="saveMappingBtn" style="width:auto;padding:8px 20px">Save Mapping</button>
+      <button class="btn btn-ghost" id="resetMappingBtn" style="width:auto;padding:8px 16px">Reset to Defaults</button>
+    </div>
+  `;
+
+  renderMappingRows(SOURCE_FIELDS);
+
+  container.querySelector('#mappingSearch').addEventListener('input', e => {
+    renderMappingRows(SOURCE_FIELDS, e.target.value.trim().toLowerCase());
+  });
+
+  container.querySelector('#saveMappingBtn').addEventListener('click', saveMappingFromUI);
+
+  container.querySelector('#resetMappingBtn').addEventListener('click', () => {
+    if (!confirm('Reset all field mappings to their defaults? Your current customisations will be lost.')) return;
+    state.fieldMapping = buildDefaultFieldMapping();
+    saveFieldMapping(state.fieldMapping);
+    renderMappingRows(SOURCE_FIELDS);
+    showToast('Field mapping reset to defaults');
+  });
+}
+
+function renderMappingRows(sourceFields, filter = '') {
+  const tbody = document.getElementById('mappingTbody');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+
+  const mapping = state.fieldMapping;
+  let lastGroup = null;
+  let visibleCount = 0;
+
+  const TRANSFORM_LABELS = { date: 'date format', duration: 'to seconds', isrc: 'ISRC format', none: '' };
+
+  mapping.forEach((m, idx) => {
+    const searchStr = [m.dest, m.source || '', m.value || '', m.notes || ''].join(' ').toLowerCase();
+    if (filter && !searchStr.includes(filter)) return;
+    visibleCount++;
+
+    // Group header row (skip when filtering)
+    if (!filter && m.group !== lastGroup) {
+      lastGroup = m.group;
+      const gr = document.createElement('tr');
+      gr.className = 'mapping-group-row';
+      gr.innerHTML = `<td colspan="5">${m.group}</td>`;
+      tbody.appendChild(gr);
+    }
+
+    const tr = document.createElement('tr');
+    tr.className = 'mapping-row';
+    tr.dataset.idx = idx;
+
+    // 1. Destination field
+    const tdDest = document.createElement('td');
+    tdDest.style.fontWeight = '500';
+    tdDest.textContent = m.dest;
+    tr.appendChild(tdDest);
+
+    // 2. Type badge
+    const tdType = document.createElement('td');
+    const badgeClass = m.type === 'direct' ? 'badge-direct' : m.type === 'hardcoded' ? 'badge-fixed' : 'badge-computed';
+    const badgeLabel = m.type === 'direct' ? 'Direct' : m.type === 'hardcoded' ? 'Fixed' : 'Computed';
+    tdType.innerHTML = `<span class="badge ${badgeClass}">${badgeLabel}</span>`;
+    tr.appendChild(tdType);
+
+    // 3. Source / Value
+    const tdSource = document.createElement('td');
+    if (m.type === 'direct') {
+      const sel = document.createElement('select');
+      sel.className = 'mapping-source-select';
+      sel.dataset.idx = idx;
+      sel.dataset.field = 'source';
+      sourceFields.forEach(sf => {
+        const opt = document.createElement('option');
+        opt.value = sf === '(none)' ? '' : sf;
+        opt.textContent = sf;
+        if (sf === m.source || (sf === '(none)' && !m.source)) opt.selected = true;
+        sel.appendChild(opt);
+      });
+      tdSource.appendChild(sel);
+    } else if (m.type === 'hardcoded') {
+      const inp = document.createElement('input');
+      inp.type = 'text';
+      inp.className = 'mapping-value-input';
+      inp.placeholder = '(blank)';
+      inp.value = (m.value !== null && m.value !== undefined) ? String(m.value) : '';
+      inp.dataset.idx = idx;
+      inp.dataset.field = 'value';
+      tdSource.appendChild(inp);
+    } else {
+      const span = document.createElement('span');
+      span.className = 'mapping-computed-desc';
+      span.textContent = m.source || '—';
+      tdSource.appendChild(span);
+    }
+    tr.appendChild(tdSource);
+
+    // 4. Transform
+    const tdTransform = document.createElement('td');
+    if (m.type === 'direct' && m.transform && m.transform !== 'none') {
+      tdTransform.innerHTML = `<span class="mapping-transform">${TRANSFORM_LABELS[m.transform] || m.transform}</span>`;
+    }
+    tr.appendChild(tdTransform);
+
+    // 5. Notes
+    const tdNotes = document.createElement('td');
+    tdNotes.className = 'mapping-notes';
+    tdNotes.textContent = m.notes || '';
+    tr.appendChild(tdNotes);
+
+    tbody.appendChild(tr);
+  });
+
+  const countLabel = document.getElementById('mappingCountLabel');
+  if (countLabel) {
+    countLabel.textContent = filter
+      ? `${visibleCount} of ${mapping.length} fields`
+      : `${mapping.length} fields total`;
+  }
+}
+
+function saveMappingFromUI() {
+  const mapping = state.fieldMapping.map(m => ({ ...m }));
+
+  document.querySelectorAll('.mapping-source-select[data-field="source"]').forEach(sel => {
+    const idx = parseInt(sel.dataset.idx);
+    if (!isNaN(idx) && mapping[idx]) mapping[idx].source = sel.value || null;
+  });
+
+  document.querySelectorAll('.mapping-value-input[data-field="value"]').forEach(inp => {
+    const idx = parseInt(inp.dataset.idx);
+    if (!isNaN(idx) && mapping[idx]) {
+      const v = inp.value.trim();
+      mapping[idx].value = v === '' ? null : v;
+    }
+  });
+
+  saveFieldMapping(mapping);
+  showToast('Field mapping saved — re-process files to apply changes');
+}
+
+function renderEditTypeTab(container) {
+  container.innerHTML = `
+    <div class="admin-edittype-panel">
+      <h2 style="font-size:16px;font-weight:700;margin-bottom:6px;color:var(--text)">EditType → Version Description Mappings</h2>
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:20px">Configure how EditType codes (detected from the audio filename) map to Version Description values. Any code not listed here defaults to "Full".</p>
+      <div id="editTypeMappings" style="margin-bottom:20px"></div>
+      <div style="display:flex;gap:8px;margin-bottom:24px">
+        <input type="text" id="newEditTypeCode" placeholder="EditType code (e.g. 15)" style="flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-family:var(--font);font-size:13px">
+        <input type="text" id="newEditTypeDesc" placeholder="Version Description (e.g. 15 Second Edit)" style="flex:2;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-family:var(--font);font-size:13px">
+        <button id="addEditTypeBtn" class="btn btn-primary" style="width:auto;padding:8px 16px">Add</button>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button id="resetEditTypeBtn" class="btn btn-ghost" style="width:auto;padding:8px 20px">Reset to Defaults</button>
+        <button id="saveEditTypeBtn" class="btn btn-primary" style="width:auto;padding:8px 20px">Save Changes</button>
+      </div>
+    </div>
+  `;
+
   renderEditTypeMappings();
-  
-  document.getElementById('addEditTypeBtn').addEventListener('click', addEditType);
-  document.getElementById('resetEditTypeBtn').addEventListener('click', resetEditTypeMap);
-  document.getElementById('saveEditTypeBtn').addEventListener('click', saveEditTypeMapUI);
+  container.querySelector('#addEditTypeBtn').addEventListener('click', addEditType);
+  container.querySelector('#resetEditTypeBtn').addEventListener('click', resetEditTypeMap);
+  container.querySelector('#saveEditTypeBtn').addEventListener('click', saveEditTypeMapUI);
 }
 
 function renderEditTypeMappings() {
   const mappingsDiv = document.getElementById('editTypeMappings');
   if (!mappingsDiv) return;
-  
   mappingsDiv.innerHTML = '';
-  
+
   Object.entries(state.editTypeMap).forEach(([code, description]) => {
     const row = document.createElement('div');
-    row.style.display = 'flex';
-    row.style.alignItems = 'center';
-    row.style.gap = '12px';
-    row.style.padding = '10px 12px';
-    row.style.border = '1px solid var(--border)';
-    row.style.borderRadius = '6px';
-    row.style.marginBottom = '8px';
-    row.style.background = 'var(--surface)';
-    
+    row.style.cssText = 'display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid var(--border);border-radius:6px;margin-bottom:8px;background:var(--surface)';
     row.innerHTML = `
       <div style="flex:0 0 80px;font-weight:600;color:var(--accent)">${code}</div>
       <input type="text" value="${description}" data-code="${code}" class="edit-desc-input" style="flex:1;padding:6px 10px;border:1px solid var(--border);border-radius:4px;font-family:var(--font);font-size:13px">
       <button class="delete-edit-type" data-code="${code}" style="background:none;border:none;color:var(--error);cursor:pointer;padding:4px;font-size:16px">×</button>
     `;
-    
     mappingsDiv.appendChild(row);
   });
-  
-  // Add event listeners for delete buttons
+
   document.querySelectorAll('.delete-edit-type').forEach(btn => {
     btn.addEventListener('click', (e) => {
-      const code = e.target.dataset.code;
-      delete state.editTypeMap[code];
+      delete state.editTypeMap[e.target.dataset.code];
       renderEditTypeMappings();
     });
   });
@@ -1228,20 +1918,12 @@ function renderEditTypeMappings() {
 function addEditType() {
   const codeInput = document.getElementById('newEditTypeCode');
   const descInput = document.getElementById('newEditTypeDesc');
-  
   const code = codeInput.value.trim();
   const desc = descInput.value.trim();
-  
-  if (!code || !desc) {
-    showToast('Please enter both EditType code and description', true);
-    return;
-  }
-  
+  if (!code || !desc) { showToast('Please enter both EditType code and description', true); return; }
   state.editTypeMap[code] = desc;
   renderEditTypeMappings();
-  
-  codeInput.value = '';
-  descInput.value = '';
+  codeInput.value = ''; descInput.value = '';
 }
 
 function resetEditTypeMap() {
@@ -1251,18 +1933,18 @@ function resetEditTypeMap() {
 }
 
 function saveEditTypeMapUI() {
-  // Get values from all description inputs
   document.querySelectorAll('.edit-desc-input').forEach(input => {
     const code = input.dataset.code;
     const desc = input.value.trim();
-    if (desc) {
-      state.editTypeMap[code] = desc;
-    }
+    if (desc) state.editTypeMap[code] = desc;
   });
-  
   saveEditTypeMap(state.editTypeMap);
   showToast('EditType mappings saved successfully');
 }
+
+// ─────────────────────────────────────────────────────
+// Export
+// ─────────────────────────────────────────────────────
 
 function exportMaster() {
   const btn = document.getElementById('exportBtn');
@@ -1288,11 +1970,8 @@ function exportMaster() {
       });
 
       setProgress(60);
-
       const ws = XLSX.utils.json_to_sheet(allRows, { header: AFRO_COLS });
-
       ws['!cols'] = AFRO_COLS.map(col => ({ wch: Math.min(Math.max(col.length, 10), 35) }));
-
       XLSX.utils.book_append_sheet(wb, ws, 'Ingestion Template');
       setProgress(90);
 
@@ -1306,11 +1985,15 @@ function exportMaster() {
       showToast('Export failed: ' + err.message, true);
     } finally {
       btn.disabled = false;
-      btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg> Export Master .xlsx`;
+      btn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg> Export Master .xlsx`;
       setTimeout(() => setProgress(0), 800);
     }
   }, 50);
 }
+
+// ─────────────────────────────────────────────────────
+// Utilities
+// ─────────────────────────────────────────────────────
 
 function setProgress(pct) {
   document.getElementById('progressFill').style.width = pct + '%';
@@ -1331,23 +2014,26 @@ function showToast(msg, isError = false) {
   toastTimer = setTimeout(() => { t.className = ''; }, 3500);
 }
 
-const dropZone = document.getElementById('dropZone');
+// ─────────────────────────────────────────────────────
+// File handling
+// ─────────────────────────────────────────────────────
+
 const fileInput = document.getElementById('fileInput');
 
-dropZone.addEventListener('click', () => fileInput.click());
-dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
-dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
-dropZone.addEventListener('drop', e => {
-  e.preventDefault();
-  dropZone.classList.remove('dragover');
-  handleFiles([...e.dataTransfer.files]);
-});
-fileInput.addEventListener('change', () => handleFiles([...fileInput.files]));
-
-async function handleFiles(files) {
+async function handleFiles(files, goToFormat = false) {
   const xlsxFiles = files.filter(f => f.name.endsWith('.xlsx'));
   if (!xlsxFiles.length) { showToast('Please drop .xlsx files only', true); return; }
 
+  if (goToFormat) {
+    // From landing screen — stage files and go to format selection
+    state.pendingFiles = xlsxFiles;
+    const n = xlsxFiles.length;
+    document.getElementById('formatFilesText').innerHTML = `<strong>${n}</strong> file${n > 1 ? 's' : ''} ready to convert`;
+    showScreen('format');
+    return;
+  }
+
+  // In workspace — add directly
   setStatus('processing…', true);
   setProgress(10);
 
@@ -1376,6 +2062,110 @@ async function handleFiles(files) {
   if (loaded) showToast(`Loaded ${loaded} file${loaded > 1 ? 's' : ''} successfully`);
 }
 
+async function processPendingFiles() {
+  setStatus('processing…', true);
+  setProgress(10);
+
+  let loaded = 0;
+  for (const file of state.pendingFiles) {
+    if (state.files.find(a => a.filename === file.name)) {
+      showToast(`"${file.name}" already loaded`);
+      continue;
+    }
+    try {
+      const fileData = await processFile(file);
+      state.files.push(fileData);
+      loaded++;
+      setProgress(10 + (loaded / state.pendingFiles.length) * 80);
+    } catch(err) {
+      showToast(err.message, true);
+    }
+  }
+
+  state.pendingFiles = [];
+  setProgress(100);
+  setTimeout(() => setProgress(0), 600);
+  setStatus(state.files.length ? `${state.files.length} file${state.files.length > 1 ? 's' : ''} loaded` : 'idle', state.files.length > 0);
+  renderQueue();
+  renderTable();
+  if (loaded) showToast(`Loaded ${loaded} file${loaded > 1 ? 's' : ''} successfully`);
+}
+
+// ─────────────────────────────────────────────────────
+// Event listeners — Landing
+// ─────────────────────────────────────────────────────
+
+const landingDropZone = document.getElementById('landingDropZone');
+
+landingDropZone.addEventListener('click', (e) => {
+  if (e.target.closest('.landing-browse-btn') || e.target === landingDropZone || e.target.closest('.landing-drop-icon') || e.target.classList.contains('landing-drop-text') || e.target.classList.contains('landing-drop-sub')) {
+    fileInput.click();
+  }
+});
+document.getElementById('landingBrowseBtn').addEventListener('click', (e) => {
+  e.stopPropagation();
+  fileInput.click();
+});
+landingDropZone.addEventListener('dragover', e => { e.preventDefault(); landingDropZone.classList.add('dragover'); });
+landingDropZone.addEventListener('dragleave', () => landingDropZone.classList.remove('dragover'));
+landingDropZone.addEventListener('drop', e => {
+  e.preventDefault();
+  landingDropZone.classList.remove('dragover');
+  handleFiles([...e.dataTransfer.files], true);
+});
+fileInput.addEventListener('change', () => {
+  if (state.phase === 'landing') {
+    handleFiles([...fileInput.files], true);
+  } else {
+    handleFiles([...fileInput.files], false);
+  }
+  fileInput.value = '';
+});
+
+// ─────────────────────────────────────────────────────
+// Event listeners — Format selection
+// ─────────────────────────────────────────────────────
+
+document.querySelectorAll('.format-card:not(.locked)').forEach(card => {
+  card.addEventListener('click', () => {
+    document.querySelectorAll('.format-card').forEach(c => c.classList.remove('selected'));
+    card.classList.add('selected');
+    state.selectedFormat = card.dataset.format;
+    document.getElementById('wsFormatLabel').textContent = state.selectedFormat;
+  });
+});
+
+document.getElementById('formatBackBtn').addEventListener('click', () => {
+  state.pendingFiles = [];
+  showScreen('landing');
+});
+
+document.getElementById('formatContinueBtn').addEventListener('click', async () => {
+  document.getElementById('wsFormatLabel').textContent = state.selectedFormat;
+  showScreen('workspace');
+  renderQueue();
+  renderTable();
+  await processPendingFiles();
+});
+
+// ─────────────────────────────────────────────────────
+// Event listeners — Workspace sidebar drop
+// ─────────────────────────────────────────────────────
+
+const sidebarDropZone = document.getElementById('sidebarDropZone');
+sidebarDropZone.addEventListener('click', () => fileInput.click());
+sidebarDropZone.addEventListener('dragover', e => { e.preventDefault(); sidebarDropZone.classList.add('dragover'); });
+sidebarDropZone.addEventListener('dragleave', () => sidebarDropZone.classList.remove('dragover'));
+sidebarDropZone.addEventListener('drop', e => {
+  e.preventDefault();
+  sidebarDropZone.classList.remove('dragover');
+  handleFiles([...e.dataTransfer.files], false);
+});
+
+// ─────────────────────────────────────────────────────
+// Event listeners — Workspace controls
+// ─────────────────────────────────────────────────────
+
 document.getElementById('fileQueue').addEventListener('click', e => {
   const btn = e.target.closest('.file-remove');
   if (!btn) return;
@@ -1395,21 +2185,24 @@ document.getElementById('clearBtn').addEventListener('click', () => {
 
 document.getElementById('exportBtn').addEventListener('click', exportMaster);
 
-document.querySelectorAll('.tab').forEach(tab => {
-  tab.addEventListener('click', () => {
-    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-    tab.classList.add('active');
-    state.view = tab.dataset.view;
-    renderTable();
-  });
-});
-
 document.getElementById('searchFilter').addEventListener('input', e => {
   state.filter = e.target.value;
   renderTable();
 });
 
-renderQueue();
+document.getElementById('adminToggleBtn').addEventListener('click', () => {
+  const btn = document.getElementById('adminToggleBtn');
+  if (state.view === 'admin') {
+    state.view = 'preview';
+    btn.classList.remove('active');
+    btn.title = 'Settings';
+  } else {
+    state.view = 'admin';
+    btn.classList.add('active');
+    btn.title = 'Close settings';
+  }
+  renderTable();
+});
 </script>
 </body>
 </html>

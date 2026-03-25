@@ -1,0 +1,1415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Afrosonic MDML385 Converter</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #ffffff;
+    --bg-secondary: #f8f9fa;
+    --bg-tertiary: #f1f3f5;
+    --surface: #ffffff;
+    --border: #dee2e6;
+    --border-light: #e9ecef;
+    --text: #212529;
+    --text-secondary: #495057;
+    --text-muted: #868e96;
+    --accent: #e8590c;
+    --accent-light: #fff4e6;
+    --accent-border: #ffd8a8;
+    --success: #2f9e44;
+    --success-light: #ebfbee;
+    --error: #e03131;
+    --error-light: #fff5f5;
+    --font: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 13px;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 24px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    flex-shrink: 0;
+  }
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .logo-mark {
+    width: 24px; height: 24px;
+    background: var(--accent);
+    clip-path: polygon(50% 0%, 100% 100%, 0% 100%);
+  }
+  .logo-text {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    letter-spacing: -0.01em;
+  }
+  .logo-text span { color: var(--accent); }
+  .status-pill {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-muted);
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    padding: 4px 12px;
+    border-radius: 4px;
+  }
+  .status-pill.active { color: var(--accent); border-color: var(--accent-border); background: var(--accent-light); }
+
+  .workspace {
+    display: grid;
+    grid-template-columns: 300px 1fr;
+    flex: 1;
+    overflow: hidden;
+    height: calc(100vh - 53px);
+  }
+
+  .sidebar {
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    background: var(--bg-secondary);
+    overflow: hidden;
+  }
+  .sidebar-section {
+    padding: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .section-label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 12px;
+  }
+
+  .drop-zone {
+    border: 2px dashed var(--border);
+    border-radius: 8px;
+    padding: 24px 16px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    background: var(--surface);
+  }
+  .drop-zone:hover, .drop-zone.dragover {
+    border-color: var(--accent);
+    background: var(--accent-light);
+  }
+  .drop-zone.dragover { border-style: solid; }
+  .drop-icon {
+    width: 32px; height: 32px;
+    margin: 0 auto 12px;
+    color: var(--text-muted);
+  }
+  .drop-zone:hover .drop-icon, .drop-zone.dragover .drop-icon { color: var(--accent); }
+  .drop-text {
+    font-size: 12px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+  }
+  .drop-text strong { color: var(--accent); font-weight: 600; display: block; margin-bottom: 4px; }
+  .drop-sub { font-size: 11px; color: var(--text-muted); margin-top: 8px; }
+
+  .file-queue {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px;
+  }
+  .queue-empty {
+    text-align: center;
+    padding: 24px 12px;
+    color: var(--text-muted);
+    font-size: 12px;
+  }
+  .file-item {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    padding: 10px 12px;
+    border-radius: 6px;
+    margin-bottom: 4px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: all 0.1s;
+    gap: 8px;
+    background: var(--surface);
+  }
+  .file-item:hover { border-color: var(--border); }
+  .file-item.selected { border-color: var(--accent-border); background: var(--accent-light); }
+  .file-item-info { flex: 1; min-width: 0; }
+  .file-name {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--accent);
+    margin-bottom: 2px;
+  }
+  .file-title {
+    font-size: 12px;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.4;
+  }
+  .file-meta {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 4px;
+  }
+  .file-remove {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 2px;
+    font-size: 16px;
+    line-height: 1;
+    flex-shrink: 0;
+    opacity: 0.5;
+    transition: opacity 0.1s;
+  }
+  .file-remove:hover { opacity: 1; color: var(--error); }
+
+  .sidebar-footer {
+    padding: 16px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    background: var(--surface);
+  }
+  .btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 16px;
+    border: none;
+    cursor: pointer;
+    font-family: var(--font);
+    font-size: 13px;
+    font-weight: 500;
+    border-radius: 6px;
+    transition: all 0.15s;
+    width: 100%;
+  }
+  .btn-primary {
+    background: var(--accent);
+    color: #fff;
+  }
+  .btn-primary:hover { background: #d14800; }
+  .btn-primary:disabled { background: #e9ecef; color: #adb5bd; cursor: not-allowed; }
+  .btn-ghost {
+    background: var(--surface);
+    color: var(--text-secondary);
+    border: 1px solid var(--border);
+  }
+  .btn-ghost:hover { border-color: var(--text-muted); color: var(--text); background: var(--bg-tertiary); }
+  .btn-ghost:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .track-count-summary {
+    font-size: 11px;
+    color: var(--text-muted);
+    text-align: center;
+    padding: 4px 0;
+  }
+  .track-count-summary span { color: var(--accent); font-weight: 600; }
+
+  .main {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: var(--bg);
+  }
+
+  .main-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    flex-shrink: 0;
+    gap: 12px;
+  }
+  .toolbar-left { display: flex; align-items: center; gap: 8px; }
+  .toolbar-right { display: flex; align-items: center; gap: 8px; }
+
+  .tab-group { display: flex; gap: 2px; }
+  .tab {
+    padding: 6px 14px;
+    font-size: 12px;
+    font-weight: 500;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    cursor: pointer;
+    background: transparent;
+    color: var(--text-muted);
+    transition: all 0.1s;
+  }
+  .tab:hover { color: var(--text); background: var(--bg-tertiary); }
+  .tab.active { color: var(--accent); border-color: var(--accent-border); background: var(--accent-light); }
+
+  .track-filter {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 6px 12px;
+    font-size: 12px;
+    font-family: var(--font);
+    border-radius: 6px;
+    outline: none;
+    width: 180px;
+    transition: border-color 0.1s;
+  }
+  .track-filter:focus { border-color: var(--accent); }
+  .track-filter::placeholder { color: var(--text-muted); }
+
+  .table-container {
+    flex: 1;
+    overflow: auto;
+    position: relative;
+  }
+
+  table {
+    border-collapse: collapse;
+    font-size: 12px;
+    width: max-content;
+    min-width: 100%;
+    table-layout: fixed;
+  }
+  thead th {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: var(--bg-tertiary);
+    border-bottom: 1px solid var(--border);
+    border-right: 1px solid var(--border);
+    padding: 8px 10px;
+    text-align: left;
+    white-space: nowrap;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    cursor: default;
+    user-select: none;
+    min-width: 80px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    position: relative;
+  }
+  thead th:last-child { border-right: none; }
+  thead th.col-orange { color: var(--accent); }
+  thead th .req-dot {
+    display: inline-block;
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: var(--accent);
+    margin-left: 4px;
+    vertical-align: middle;
+  }
+
+  /* Column resize handle */
+  thead th .resize-handle {
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 5px;
+    cursor: col-resize;
+    background: transparent;
+    z-index: 11;
+  }
+  thead th .resize-handle:hover,
+  thead th .resize-handle.resizing {
+    background: var(--accent);
+  }
+
+  tbody tr {
+    border-bottom: 1px solid var(--border-light);
+    transition: background 0.05s;
+  }
+  tbody tr:hover { background: var(--bg-secondary); }
+  tbody tr.main-track td { }
+  tbody tr.alt-track td { opacity: 0.7; }
+  tbody tr.alt-track:hover td { opacity: 1; }
+  tbody tr.album-separator td {
+    background: var(--bg-tertiary);
+    border-top: 2px solid var(--accent-border);
+    padding: 6px 10px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--accent);
+  }
+
+  td {
+    padding: 6px 10px;
+    border-right: 1px solid var(--border-light);
+    color: var(--text);
+    vertical-align: middle;
+    /* FIX: Allows text like 'Medium-Fast' to wrap instead of showing ellipsis (...) */
+    white-space: normal; 
+    word-break: break-word;
+    min-width: 80px;
+  }
+  td:last-child { border-right: none; }
+  td.empty-cell { color: var(--text-muted); }
+  td.manual-cell {
+    background: var(--accent-light);
+    color: var(--text-secondary);
+  }
+  td.is-work-y { color: var(--accent); font-weight: 600; }
+  td.row-num {
+    color: var(--text-muted);
+    font-size: 11px;
+    min-width: 40px;
+    max-width: 40px;
+    text-align: right;
+    user-select: none;
+    background: var(--bg-secondary);
+  }
+
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    gap: 12px;
+    color: var(--text-muted);
+    padding: 40px;
+  }
+  .empty-state-icon {
+    width: 48px; height: 48px;
+    opacity: 0.3;
+  }
+  .empty-state-title {
+    font-size: 15px;
+    color: var(--text-secondary);
+    font-weight: 500;
+  }
+  .empty-state-sub { font-size: 13px; text-align: center; line-height: 1.6; max-width: 320px; color: var(--text-muted); }
+
+  #toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--accent);
+    padding: 12px 16px;
+    font-size: 13px;
+    border-radius: 6px;
+    z-index: 9999;
+    opacity: 0;
+    transform: translateY(8px);
+    transition: all 0.2s;
+    max-width: 320px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    pointer-events: none;
+  }
+  #toast.show { opacity: 1; transform: translateY(0); }
+  #toast.error { border-left-color: var(--error); }
+
+  .progress-bar {
+    height: 3px;
+    background: var(--bg-tertiary);
+    position: relative;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    background: var(--accent);
+    width: 0%;
+    transition: width 0.3s ease;
+  }
+
+  #fileInput { display: none; }
+
+  .legend {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+  .legend-item { display: flex; align-items: center; gap: 6px; }
+  .legend-dot {
+    width: 8px; height: 8px;
+    border-radius: 2px;
+  }
+  .legend-dot.orange { background: var(--accent); opacity: 0.6; }
+  .legend-dot.dim { background: var(--text-muted); opacity: 0.3; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-mark"></div>
+    <div class="logo-text"><span>Afrosonic</span> MDML385 Converter</div>
+  </div>
+  <div class="header-right">
+    <div class="legend">
+      <div class="legend-item"><div class="legend-dot orange"></div> manual field</div>
+      <div class="legend-item"><div class="legend-dot dim"></div> auto-mapped</div>
+    </div>
+    <div class="status-pill" id="statusPill">idle</div>
+  </div>
+</header>
+
+<div class="workspace">
+  <aside class="sidebar">
+    <div class="sidebar-section">
+      <div class="section-label">Import MDML385 Files</div>
+      <div class="drop-zone" id="dropZone">
+        <svg class="drop-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+        </svg>
+        <div class="drop-text">
+          <strong>Drop MDML385 files here</strong>
+          or click to browse
+        </div>
+        <div class="drop-sub">.xlsx only · multiple files supported</div>
+      </div>
+      <input type="file" id="fileInput" accept=".xlsx" multiple>
+    </div>
+
+    <div class="sidebar-section" style="padding-bottom:8px;">
+      <div class="section-label">Queue <span id="queueCount" style="color:var(--accent)">0</span> files</div>
+    </div>
+    <div class="file-queue" id="fileQueue">
+      <div class="queue-empty" id="queueEmpty">No files loaded</div>
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="track-count-summary" id="trackSummary">—</div>
+      <button class="btn btn-primary" id="exportBtn" disabled>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+        </svg>
+        Export Master .xlsx
+      </button>
+      <button class="btn btn-ghost" id="clearBtn" disabled>Clear all</button>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="main-toolbar">
+      <div class="toolbar-left">
+        <div class="tab-group">
+          <button class="tab active" data-view="preview">Preview</button>
+          <button class="tab" data-view="warnings">Warnings <span id="warnBadge" style="display:none;color:var(--accent)"></span></button>
+          <button class="tab" data-view="admin">⚙ Admin</button>
+        </div>
+      </div>
+      <div class="toolbar-right">
+        <input class="track-filter" type="text" id="searchFilter" placeholder="Filter tracks..." />
+      </div>
+    </div>
+    <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+    <div class="table-container" id="tableContainer">
+      <div class="empty-state" id="emptyState">
+        <svg class="empty-state-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+          <path d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+        </svg>
+        <div class="empty-state-title">No data yet</div>
+        <div class="empty-state-sub">Drop one or more MDML385 .xlsx files into the queue to begin conversion</div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const state = {
+  files: [],
+  view: 'preview',
+  filter: '',
+  editTypeMap: loadEditTypeMap(),
+};
+
+// Load EditType mappings from localStorage or use defaults
+function loadEditTypeMap() {
+  try {
+    const saved = localStorage.getItem('afrosonic_edittype_map');
+    if (saved) {
+      return JSON.parse(saved);
+    }
+  } catch (e) {
+    console.warn('Failed to load EditType map from localStorage');
+  }
+  return { ...DEFAULT_EDITTYPE_MAP };
+}
+
+// Save EditType mappings to localStorage
+function saveEditTypeMap(map) {
+  try {
+    localStorage.setItem('afrosonic_edittype_map', JSON.stringify(map));
+    state.editTypeMap = map;
+  } catch (e) {
+    console.error('Failed to save EditType map to localStorage');
+  }
+}
+
+const AFRO_COLS = [
+  'Column Name','Label Prefix','Label Name','Album Prefix','Album Catalogue Number',
+  'Album Suffix','Album Overide','Album Title','Album Description','Release Date',
+  'Album Categories','Track No','Is this the Work','Work Name','Work Description',
+  'Version Type','Version Description','EditType','Duration','BPM',
+  'Comp Surname 1','Comp Forename 1','Composer 1 Society','Composer 1 CAE','Comp Split1 %','Composer 1 Capacity',
+  'Comp Surname 2','Comp Forename 2','Composer 2 Society','Composer 2 CAE','Comp Split2 %','Composer 2 Capacity',
+  'Comp Surname 3','Comp Forename 3','Composer 3 Society','Composer 3 CAE','Comp Split3 %','Composer 3 Capacity',
+  'Comp Surname 4','Comp Forename 4','Composer 4 Society','Composer 4 CAE','Comp Split4 %','Composer 4 Capacity',
+  'Comp Surname 5','Comp Forename 5','Composer 5 Society','Composer 5 CAE','Comp Split5 %','Composer 5 Capacity',
+  'Comp Surname 6','Comp Forename 6','Composer 6 Society','Composer 6 CAE','Comp Split6 %','Composer 6 Capacity',
+  'Comp Surname 7','Comp Forename 7','Composer 7 Society','Composer 7 CAE','Comp Split7 %','Composer 7 Capacity',
+  'Comp Surname 8','Comp Forename 8','Composer 8 Society','Composer 8 CAE','Comp Split8 %','Composer 8 Capacity',
+  'Comp Surname 9','Comp Forename 9','Composer 9 Society','Composer 9 CAE','Comp Split9 %','Composer 9 Capacity',
+  'Comp Surname 10','Comp Forename 10','Composer 10 Society','Composer 10 CAE','Comp Split10 %','Composer 10 Capacity',
+  'Publisher 1 Name','Publisher 1 Affiliation','Publisher 1 Split',
+  'Publisher 2 Name','Publisher 2 Affiliation','Publisher 2 Split',
+  'Publisher 3 Name','Publisher 3 Affiliation','Publisher 3 Split',
+  'Publisher 4 Name','Publisher 4 Affiliation','Publisher 4 Split',
+  'Publisher 5 Name','Publisher 5 Affiliation','Publisher 5 Split',
+  'Publisher 6 Name','Publisher 6 Affiliation','Publisher 6 Split',
+  'ISWC','ISRC','Lyrics','Instruments','Country List',"Era's",'Moods',
+  'Music For','Music Styles','Tempos','Well Known Tunes','Style-Alikes','Music Key',
+  'Artwork','Audio File Name'
+];
+
+const MANUAL_COLS = new Set(['Album Catalogue Number','Version Type','Music For','Music Styles','Tempos','Country List']);
+
+// Default EditType mappings - can be customized in admin section
+const DEFAULT_EDITTYPE_MAP = {
+  '30': '30 Second Edit',
+  '60': '60 Second Edit',
+  '20': '20 Second Edit',
+  '15': '15 Second Edit',
+  '10': '10 Second Edit',
+  'Stil': 'Sting/Ident',
+  'Hit': 'Hit',
+  'Ful': 'Full'
+};
+
+const PREVIEW_COLS = [
+  'Track No','Is this the Work','Work Name','Version Type','EditType','Duration','BPM',
+  'Comp Surname 1','Comp Forename 1','Comp Split1 %',
+  'Comp Surname 2','Comp Forename 2','Comp Split2 %',
+  'Publisher 1 Name','Publisher 1 Affiliation','Publisher 1 Split',
+  'ISRC','Moods','Music For','Tempos','Audio File Name'
+];
+
+const MOOD_TAGS = new Set([
+  'Aggressive','Bold','Hi-Energy','Bright','Driving','Punchy','Dynamic','Building',
+  'Tense','Emotional','Uplifting','Playful','Dark','Mysterious','Melancholic',
+  'Energetic','Calm','Romantic','Suspenseful','Epic','Triumphant','Sad','Happy',
+  'Quirky','Powerful','Inspiring','Laid-back','Groovy','Atmospheric','Hypnotic',
+  'Energetic/Lively','Adventurous','Dramatic','Fierce','Euphoric','Wistful',
+  'Reflective','Joyful','Majestic','Intense','Upbeat','Delicate/Gentle'
+]);
+
+const MUSIC_FOR_TAGS = new Set([
+  'Youth Energy','Youth Lifestyle','Football/Soccer','Party','Action','Urban Drama',
+  'Documentary','Surveillance','Crime','Investigation','Travel','Contemporary Culture',
+  'Youth TV','Promos','Promos/Trailers','Action/Adventure','Human Drama',
+  'Ecological/Environmental','Wildlife','Fashion','Sport','Advertising',
+  'Entertainment','Thriller','Psychological Thriller','Adventure Hero',
+  'Computer/Arcade Games'
+]);
+
+function reformatISRC(isrc) {
+  if (!isrc) return null;
+  const s = String(isrc).trim().replace(/-/g, '');
+  if (s.length === 12) {
+    return `${s.slice(0,2)}-${s.slice(2,5)}-${s.slice(5,7)}-${s.slice(7,12)}`;
+  }
+  return isrc;
+}
+
+function formatReleaseDate(val) {
+  if (!val) return null;
+  let d;
+  // With raw:true and cellDates:false, dates arrive as Excel serial numbers (e.g. 45769)
+  if (typeof val === 'number') {
+    // Excel epoch is Jan 1 1900; JS epoch is Jan 1 1970. Offset = 25569 days.
+    // Also account for Excel's leap year bug (it thinks 1900 was a leap year).
+    d = new Date(Math.round((val - 25569) * 86400 * 1000));
+  } else if (val instanceof Date) {
+    d = val;
+  } else {
+    d = new Date(val);
+  }
+  if (isNaN(d)) return String(val);
+  return `${d.getUTCMonth() + 1}/${d.getUTCDate()}/${d.getUTCFullYear()}`;
+}
+
+function durationToSeconds(val) {
+  if (val == null) return null;
+
+  // With raw:true and cellDates:false, Excel time values always arrive as a decimal
+  // fraction of one day. e.g. 04:41 stored as HH:MM gives 0.19514... 
+  // Multiply by 86400 to get total seconds in HH:MM:SS space.
+  // Harvest stores duration as MM:SS but Excel treats it as HH:MM:SS, so:
+  //   floor(totalRawSecs / 3600) = what Excel calls "hours"  = our MINUTES
+  //   floor((totalRawSecs % 3600) / 60) = what Excel calls "minutes" = our SECONDS
+  if (typeof val === 'number' && val > 0 && val < 1) {
+    const totalRawSecs = Math.round(val * 86400);
+    const mins = Math.floor(totalRawSecs / 3600);
+    const secs = Math.floor((totalRawSecs % 3600) / 60);
+    return mins * 60 + secs;
+  }
+
+  // String fallback e.g. "04:41" — treat first segment as minutes
+  if (typeof val === 'string') {
+    const parts = val.trim().split(':').map(Number);
+    if (parts.length >= 2) return parts[0] * 60 + parts[1];
+  }
+
+  return null;
+}
+
+function getEditType(audioFilename) {
+  if (!audioFilename) return { code: 'Ful', description: state.editTypeMap['Ful'] || 'Full' };
+  const f = String(audioFilename).toUpperCase();
+  let code = 'Ful';
+  if (/_30[_\s]|_30$|_30SEC/.test(f)) code = '30';
+  else if (/_60[_\s]|_60$|_60SEC/.test(f)) code = '60';
+  else if (/_20[_\s]|_20$/.test(f)) code = '20';
+  else if (/_15[_\s]|_15$/.test(f)) code = '15';
+  else if (/_10[_\s]|_10$/.test(f)) code = '10';
+  else if (/STIL|STING|IDENT/.test(f)) code = 'Stil';
+  else if (/HIT/.test(f)) code = 'Hit';
+  
+  return {
+    code: code,
+    description: state.editTypeMap[code] || state.editTypeMap['Ful'] || 'Full'
+  };
+}
+
+function getVersionType(title, isMain) {
+  if (isMain === 'Y') return '';
+  const t = String(title).toUpperCase();
+  if (/_DRUMS_BASS|_DRUMS_BASS/.test(t)) return 'Underscore';
+  if (/_NO_DRUMS/.test(t)) return 'Underscore 2';
+  if (/_NO_VOCALS/.test(t)) return 'Instrumental';
+  if (/_INSTRUMENTAL/.test(t)) return 'Instrumental';
+  if (/_UNDERSCORE/.test(t)) return 'Underscore';
+  return '';
+}
+
+function getWorkName(title, isMain) {
+  if (isMain === 'Y') return title;
+  return String(title)
+    .replace(/_Drums_Bass/gi,'').replace(/_Drums_bass/gi,'')
+    .replace(/_No_Drums/gi,'').replace(/_No_Vocals/gi,'')
+    .replace(/_Instrumental/gi,'').replace(/_Underscore/gi,'')
+    .replace(/_30$/,'').replace(/_60$/,'').replace(/_30_/g,'_').replace(/_60_/g,'_')
+    .replace(/_+$/,'').trim();
+}
+
+function getMoods(keywords) {
+  if (!keywords) return null;
+  // Only take moods before "African" tag
+  const parts = String(keywords).split(',').map(k => k.trim());
+  const moods = [];
+  for (const part of parts) {
+    if (part.toLowerCase() === 'african') break;
+    if (part) moods.push(part);
+  }
+  return moods.length ? moods.join(';') : null;
+}
+
+function getMusicFor(musicFor) {
+  if (!musicFor) return null;
+  // Convert comma-separated to semicolon-separated, preserving all values
+  const parts = String(musicFor).split(',').map(k => k.trim()).filter(k => k);
+  return parts.length ? parts.join(';') : null;
+}
+
+function getMusicForFromKeywords(keywords) {
+  if (!keywords) return null;
+  // Extract Music For tags from keywords (tags like Youth Energy, Action, Urban Drama, Promos, etc.)
+  const parts = String(keywords).split(',').map(k => k.trim());
+  const musicFor = parts.filter(p => MUSIC_FOR_TAGS.has(p));
+  return musicFor.length ? musicFor.join(';') : null;
+}
+
+function safeStr(val) {
+  if (val === null || val === undefined || val === '' || (typeof val === 'number' && isNaN(val))) return null;
+  return val;
+}
+
+function parseMDML385Sheet(sheetData) {
+  const rows = sheetData.filter(r => r['TRACK: Title']);
+  
+  const parentDesc = {};
+  rows.forEach(r => {
+    if (r['TRACK: Is Main'] === 'Y') {
+      const wn = String(r['TRACK: Title']);
+      parentDesc[wn] = r['TRACK: Description'] || null;
+    }
+  });
+
+  return rows.map((row, idx) => {
+    const isMain = row['TRACK: Is Main'] === 'Y' ? 'Y' : 'N';
+    const title = String(row['TRACK: Title'] || '');
+    const workName = getWorkName(title, isMain);
+    const audioFile = row['TRACK: Audio Filename'] || row['TRACK: Title'];
+    const kw = row['TRACK: Keywords'] || '';
+
+    const r = {};
+    r['Column Name'] = null;
+    r['Label Prefix'] = 'AFRS';
+    r['Label Name'] = 'AFROSONIC';
+    r['Album Prefix'] = null;
+    r['Album Catalogue Number'] = null;
+    r['Album Suffix'] = null;
+    r['Album Overide'] = null;
+    r['Album Title'] = safeStr(row['ALBUM: Title']);
+    r['Album Description'] = safeStr(row['ALBUM: Description']);
+    r['Release Date'] = formatReleaseDate(row['ALBUM: Release Date']);
+    r['Album Categories'] = null;
+    r['Track No'] = row['TRACK: Number'];
+    r['Is this the Work'] = isMain;
+    
+    r['Work Name'] = workName;
+    
+    // For main tracks, use description. For alt tracks, it should remain blank.
+    if (isMain === 'Y') {
+      r['Work Description'] = safeStr(row['TRACK: Description']) || null;
+    } else {
+      r['Work Description'] = null;
+    }
+    
+    r['Version Type'] = getVersionType(title, isMain);
+    const editTypeInfo = getEditType(audioFile);
+    r['EditType'] = editTypeInfo.code;
+    
+    // For alt tracks, extract version info from title into Version Description
+    // For main tracks, use the EditType mapping
+    if (isMain === 'N') {
+      let versionDesc = null;
+      if (/_DRUMS[_\s]&[_\s]BASS|_DRUMS_BASS/i.test(title)) versionDesc = 'Drums & Bass Mix';
+      else if (/_NO[_\s]DRUMS/i.test(title)) versionDesc = 'No Drums Mix';
+      else if (/_NO[_\s]VOCALS/i.test(title)) versionDesc = 'No Vocals Mix';
+      else if (/_INSTRUMENTAL/i.test(title)) versionDesc = 'Instrumental Mix';
+      else if (/_UNDERSCORE/i.test(title)) versionDesc = 'Underscore Mix';
+      else if (/_30[_\s]|_30$/i.test(title)) versionDesc = '30 Second Edit';
+      else if (/_60[_\s]|_60$/i.test(title)) versionDesc = '60 Second Edit';
+      r['Version Description'] = versionDesc || editTypeInfo.description;
+    } else {
+      r['Version Description'] = editTypeInfo.description;
+    }
+    r['Duration'] = durationToSeconds(row['TRACK: Duration']);
+    r['BPM'] = safeStr(row['TRACK: BPM']);
+
+    for (let i = 1; i <= 10; i++) {
+      const fn = row[`WRITER:${i}: First Name`];
+      const mn = row[`WRITER:${i}: Middle Name`];
+      const ln = row[`WRITER:${i}: Last Name`];
+      const forenameArr = [fn, mn].filter(x => x != null && x !== '' && x !== undefined);
+      r[`Comp Surname ${i}`] = safeStr(ln);
+      r[`Comp Forename ${i}`] = forenameArr.length ? forenameArr.join(' ') : null;
+      r[`Composer ${i} Society`] = safeStr(row[`WRITER:${i}: Society`]);
+      r[`Composer ${i} CAE`] = safeStr(row[`WRITER:${i}: IPI`]);
+      r[`Comp Split${i} %`] = safeStr(row[`WRITER:${i}: Owner Performance Share %`]);
+      r[`Composer ${i} Capacity`] = safeStr(row[`WRITER:${i}: Capacity`]);
+    }
+
+    for (let i = 1; i <= 6; i++) {
+      r[`Publisher ${i} Name`] = safeStr(row[`PUBLISHER:${i}: Name`]);
+      r[`Publisher ${i} Affiliation`] = safeStr(row[`PUBLISHER:${i}: Society`]);
+      r[`Publisher ${i} Split`] = safeStr(row[`PUBLISHER:${i}: Owner Performance Share %`]);
+    }
+
+    r['ISWC'] = safeStr(row['CODE: ISWC']);
+    r['ISRC'] = reformatISRC(row['CODE: ISRC']);
+    r['Lyrics'] = safeStr(row['TRACK: Lyrics']);
+    r['Instruments'] = safeStr(row['TRACK: Instrumentation']);
+    r['Country List'] = 'African;South Africa';
+    r["Era's"] = null;
+    // Only apply moods to main tracks
+    r['Moods'] = isMain === 'Y' ? getMoods(kw) : null;
+    // Extract Music For from Keywords (tags like Youth Energy, Action, Urban Drama, Promos, etc.)
+    r['Music For'] = getMusicForFromKeywords(kw);
+    r['Music Styles'] = null;
+    r['Tempos'] = null; // Manual input field - left blank for user entry
+    r['Well Known Tunes'] = null;
+    r['Style-Alikes'] = null;
+    r['Music Key'] = null;
+    r['Artwork'] = safeStr(row['ALBUM: Artwork Filename']);
+    r['Audio File Name'] = audioFile ? `${audioFile}.wav` : null;
+
+    return r;
+  });
+}
+
+function processFile(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        // Read once with raw:true and no cellDates — gives us pure values:
+        // Duration as a decimal fraction (e.g. 0.003252), dates as serial numbers,
+        // and text fields like Tempo as their actual full string with no truncation.
+        const wb = XLSX.read(e.target.result, { type: 'array', cellDates: false });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const merged = XLSX.utils.sheet_to_json(ws, { defval: null, raw: true });
+
+        if (!merged.length || !merged[0]['ALBUM: Code']) {
+          reject(new Error(`"${file.name}" doesn't look like an MDML385 file`));
+          return;
+        }
+
+        const tracks = parseMDML385Sheet(merged);
+        const albumCode = merged[0]['ALBUM: Code'] || file.name.replace('.xlsx','');
+        const albumTitle = merged[0]['ALBUM: Title'] || '(untitled)';
+        const mainTracks = tracks.filter(t => t['Is this the Work'] === 'Y').length;
+
+        resolve({
+          id: Date.now() + Math.random(),
+          filename: file.name,
+          code: albumCode,
+          title: albumTitle,
+          trackCount: tracks.length,
+          mainCount: mainTracks,
+          tracks,
+        });
+      } catch(err) {
+        reject(err);
+      }
+    };
+    reader.onerror = () => reject(new Error(`Failed to read "${file.name}"`));
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+function buildWarnings() {
+  const warnings = [];
+  state.files.forEach(file => {
+    file.tracks.forEach(t => {
+      if (!t['ISRC']) warnings.push({ file: file.code, track: t['Work Name'], field: 'ISRC', msg: 'Missing ISRC' });
+      if (!t['Comp Surname 1']) warnings.push({ file: file.code, track: t['Work Name'], field: 'Composer', msg: 'No composer data' });
+      if (!t['Publisher 1 Name']) warnings.push({ file: file.code, track: t['Work Name'], field: 'Publisher', msg: 'No publisher data' });
+      if (!t['Moods']) warnings.push({ file: file.code, track: t['Work Name'], field: 'Moods', msg: 'No moods mapped' });
+    });
+  });
+  return warnings;
+}
+
+// Column resize functionality
+let resizing = null;
+let startX = 0;
+let startWidth = 0;
+
+function initColumnResize(th) {
+  const handle = document.createElement('div');
+  handle.className = 'resize-handle';
+  th.appendChild(handle);
+  
+  handle.addEventListener('mousedown', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    resizing = th;
+    startX = e.pageX;
+    startWidth = th.offsetWidth;
+    handle.classList.add('resizing');
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+  });
+}
+
+document.addEventListener('mousemove', (e) => {
+  if (!resizing) return;
+  const diff = e.pageX - startX;
+  const newWidth = Math.max(60, startWidth + diff);
+  const colIndex = Array.from(resizing.parentNode.children).indexOf(resizing);
+  
+  // Update header
+  resizing.style.width = newWidth + 'px';
+  resizing.style.minWidth = newWidth + 'px';
+  
+  // Update all cells in this column
+  const table = resizing.closest('table');
+  if (table) {
+    table.querySelectorAll('tbody tr:not(.album-separator)').forEach(row => {
+      const cell = row.children[colIndex];
+      if (cell) {
+        cell.style.width = newWidth + 'px';
+        cell.style.minWidth = newWidth + 'px';
+      }
+    });
+  }
+});
+
+document.addEventListener('mouseup', () => {
+  if (resizing) {
+    resizing.querySelector('.resize-handle').classList.remove('resizing');
+    resizing = null;
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
+  }
+});
+
+function renderQueue() {
+  const qe = document.getElementById('queueEmpty');
+  const queue = document.getElementById('fileQueue');
+  const count = document.getElementById('queueCount');
+  const summary = document.getElementById('trackSummary');
+  const exportBtn = document.getElementById('exportBtn');
+  const clearBtn = document.getElementById('clearBtn');
+
+  count.textContent = state.files.length;
+  qe.style.display = state.files.length ? 'none' : 'block';
+
+  [...queue.querySelectorAll('.file-item')].forEach(el => el.remove());
+
+  let totalTracks = 0;
+  state.files.forEach(file => {
+    totalTracks += file.trackCount;
+    const item = document.createElement('div');
+    item.className = 'file-item';
+    item.innerHTML = `
+      <div class="file-item-info">
+        <div class="file-name">${file.code}</div>
+        <div class="file-title" title="${file.title}">${file.title}</div>
+        <div class="file-meta">${file.trackCount} tracks · ${file.mainCount} works</div>
+      </div>
+      <button class="file-remove" data-id="${file.id}" title="Remove">×</button>
+    `;
+    queue.appendChild(item);
+  });
+
+  if (totalTracks > 0) {
+    summary.innerHTML = `<span>${totalTracks}</span> total tracks across <span>${state.files.length}</span> file${state.files.length > 1 ? 's' : ''}`;
+  } else {
+    summary.textContent = '—';
+  }
+
+  exportBtn.disabled = state.files.length === 0;
+  clearBtn.disabled = state.files.length === 0;
+}
+
+function renderTable() {
+  const container = document.getElementById('tableContainer');
+  const emptyState = document.getElementById('emptyState');
+  const warnBadge = document.getElementById('warnBadge');
+
+  if (state.files.length === 0) {
+    emptyState.style.display = 'flex';
+    container.innerHTML = '';
+    container.appendChild(emptyState);
+    return;
+  }
+
+  emptyState.style.display = 'none';
+
+  if (state.view === 'warnings') {
+    renderWarningsView(container);
+    return;
+  }
+  
+  if (state.view === 'admin') {
+    renderAdminView(container);
+    return;
+  }
+
+  const filter = state.filter.toLowerCase();
+  const cols = PREVIEW_COLS;
+
+  const table = document.createElement('table');
+  const thead = document.createElement('thead');
+  const headerRow = document.createElement('tr');
+  const numTh = document.createElement('th');
+  numTh.className = 'row-num';
+  numTh.textContent = '#';
+  numTh.style.width = '40px';
+  numTh.style.minWidth = '40px';
+  headerRow.appendChild(numTh);
+  
+  cols.forEach(col => {
+    const th = document.createElement('th');
+    th.textContent = col;
+    th.style.minWidth = '100px';
+    th.style.width = '120px';
+    if (MANUAL_COLS.has(col)) {
+      th.classList.add('col-orange');
+      th.innerHTML += '<span class="req-dot"></span>';
+    }
+    initColumnResize(th);
+    headerRow.appendChild(th);
+  });
+  thead.appendChild(headerRow);
+  table.appendChild(thead);
+
+  const tbody = document.createElement('tbody');
+  let globalIdx = 1;
+
+  state.files.forEach((file, fileIdx) => {
+    const sepRow = document.createElement('tr');
+    sepRow.className = 'album-separator';
+    const sepTd = document.createElement('td');
+    sepTd.colSpan = cols.length + 1;
+    sepTd.textContent = `${file.code} — ${file.title}`;
+    sepRow.appendChild(sepTd);
+    tbody.appendChild(sepRow);
+
+    file.tracks.forEach(track => {
+      const wn = String(track['Work Name'] || '').toLowerCase();
+      if (filter && !wn.includes(filter)) return;
+
+      const tr = document.createElement('tr');
+      tr.className = track['Is this the Work'] === 'Y' ? 'main-track' : 'alt-track';
+
+      const numTd = document.createElement('td');
+      numTd.className = 'row-num';
+      numTd.textContent = globalIdx++;
+      tr.appendChild(numTd);
+
+      cols.forEach(col => {
+        const td = document.createElement('td');
+        const val = track[col];
+
+        if (val === null || val === undefined || val === '') {
+          td.className = MANUAL_COLS.has(col) ? 'manual-cell' : 'empty-cell';
+          td.textContent = MANUAL_COLS.has(col) ? '—' : '';
+        } else {
+          td.textContent = String(val);
+          if (col === 'Is this the Work' && val === 'Y') td.className = 'is-work-y';
+          if (MANUAL_COLS.has(col)) td.style.background = 'var(--accent-light)';
+        }
+
+        td.title = val != null ? String(val) : '';
+        tr.appendChild(td);
+      });
+
+      tbody.appendChild(tr);
+    });
+  });
+
+  table.appendChild(tbody);
+
+  const warnings = buildWarnings();
+  if (warnings.length > 0) {
+    warnBadge.textContent = ` (${warnings.length})`;
+    warnBadge.style.display = 'inline';
+  } else {
+    warnBadge.style.display = 'none';
+  }
+
+  container.innerHTML = '';
+  container.appendChild(table);
+}
+
+function renderWarningsView(container) {
+  const warnings = buildWarnings();
+  if (!warnings.length) {
+    container.innerHTML = '<div class="empty-state" style="display:flex"><div class="empty-state-title" style="color:var(--success)">✓ No issues found</div></div>';
+    return;
+  }
+  const table = document.createElement('table');
+  const thead = document.createElement('thead');
+  const headerRow = document.createElement('tr');
+  ['File','Track','Field','Issue'].forEach(col => {
+    const th = document.createElement('th');
+    th.textContent = col;
+    th.style.minWidth = '100px';
+    th.style.width = '150px';
+    initColumnResize(th);
+    headerRow.appendChild(th);
+  });
+  thead.appendChild(headerRow);
+  table.appendChild(thead);
+  const tbody = document.createElement('tbody');
+  warnings.forEach(w => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${w.file}</td><td>${w.track}</td><td style="color:var(--accent)">${w.field}</td><td>${w.msg}</td>`;
+    tbody.appendChild(tr);
+  });
+  table.appendChild(tbody);
+  container.innerHTML = '';
+  container.appendChild(table);
+}
+
+function renderAdminView(container) {
+  const adminDiv = document.createElement('div');
+  adminDiv.style.padding = '24px';
+  adminDiv.style.maxWidth = '800px';
+  
+  adminDiv.innerHTML = `
+    <h2 style="font-size:18px;font-weight:600;margin-bottom:8px;color:var(--text)">EditType → Version Description Mappings</h2>
+    <p style="font-size:13px;color:var(--text-muted);margin-bottom:20px">Configure how EditType codes map to Version Description values. Any EditType not in this list will default to "Full".</p>
+    
+    <div id="editTypeMappings" style="margin-bottom:20px"></div>
+    
+    <div style="display:flex;gap:8px;margin-bottom:24px">
+      <input type="text" id="newEditTypeCode" placeholder="EditType code (e.g. 15)" style="flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-family:var(--font);font-size:13px">
+      <input type="text" id="newEditTypeDesc" placeholder="Version Description (e.g. 15 Second Edit)" style="flex:2;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-family:var(--font);font-size:13px">
+      <button id="addEditTypeBtn" class="btn btn-primary" style="width:auto;padding:8px 16px">Add</button>
+    </div>
+    
+    <div style="display:flex;gap:8px">
+      <button id="resetEditTypeBtn" class="btn btn-ghost">Reset to Defaults</button>
+      <button id="saveEditTypeBtn" class="btn btn-primary">Save Changes</button>
+    </div>
+  `;
+  
+  container.innerHTML = '';
+  container.appendChild(adminDiv);
+  
+  renderEditTypeMappings();
+  
+  document.getElementById('addEditTypeBtn').addEventListener('click', addEditType);
+  document.getElementById('resetEditTypeBtn').addEventListener('click', resetEditTypeMap);
+  document.getElementById('saveEditTypeBtn').addEventListener('click', saveEditTypeMapUI);
+}
+
+function renderEditTypeMappings() {
+  const mappingsDiv = document.getElementById('editTypeMappings');
+  if (!mappingsDiv) return;
+  
+  mappingsDiv.innerHTML = '';
+  
+  Object.entries(state.editTypeMap).forEach(([code, description]) => {
+    const row = document.createElement('div');
+    row.style.display = 'flex';
+    row.style.alignItems = 'center';
+    row.style.gap = '12px';
+    row.style.padding = '10px 12px';
+    row.style.border = '1px solid var(--border)';
+    row.style.borderRadius = '6px';
+    row.style.marginBottom = '8px';
+    row.style.background = 'var(--surface)';
+    
+    row.innerHTML = `
+      <div style="flex:0 0 80px;font-weight:600;color:var(--accent)">${code}</div>
+      <input type="text" value="${description}" data-code="${code}" class="edit-desc-input" style="flex:1;padding:6px 10px;border:1px solid var(--border);border-radius:4px;font-family:var(--font);font-size:13px">
+      <button class="delete-edit-type" data-code="${code}" style="background:none;border:none;color:var(--error);cursor:pointer;padding:4px;font-size:16px">×</button>
+    `;
+    
+    mappingsDiv.appendChild(row);
+  });
+  
+  // Add event listeners for delete buttons
+  document.querySelectorAll('.delete-edit-type').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const code = e.target.dataset.code;
+      delete state.editTypeMap[code];
+      renderEditTypeMappings();
+    });
+  });
+}
+
+function addEditType() {
+  const codeInput = document.getElementById('newEditTypeCode');
+  const descInput = document.getElementById('newEditTypeDesc');
+  
+  const code = codeInput.value.trim();
+  const desc = descInput.value.trim();
+  
+  if (!code || !desc) {
+    showToast('Please enter both EditType code and description', true);
+    return;
+  }
+  
+  state.editTypeMap[code] = desc;
+  renderEditTypeMappings();
+  
+  codeInput.value = '';
+  descInput.value = '';
+}
+
+function resetEditTypeMap() {
+  state.editTypeMap = { ...DEFAULT_EDITTYPE_MAP };
+  renderEditTypeMappings();
+  showToast('Reset to default mappings');
+}
+
+function saveEditTypeMapUI() {
+  // Get values from all description inputs
+  document.querySelectorAll('.edit-desc-input').forEach(input => {
+    const code = input.dataset.code;
+    const desc = input.value.trim();
+    if (desc) {
+      state.editTypeMap[code] = desc;
+    }
+  });
+  
+  saveEditTypeMap(state.editTypeMap);
+  showToast('EditType mappings saved successfully');
+}
+
+function exportMaster() {
+  const btn = document.getElementById('exportBtn');
+  btn.disabled = true;
+  btn.textContent = 'Exporting…';
+  setProgress(30);
+
+  setTimeout(() => {
+    try {
+      const wb = XLSX.utils.book_new();
+      const allRows = [];
+
+      state.files.forEach(file => {
+        file.tracks.forEach(track => {
+          const row = {};
+          AFRO_COLS.forEach(col => {
+            let val = track[col];
+            if (val === null || val === undefined) val = '';
+            row[col] = val;
+          });
+          allRows.push(row);
+        });
+      });
+
+      setProgress(60);
+
+      const ws = XLSX.utils.json_to_sheet(allRows, { header: AFRO_COLS });
+
+      ws['!cols'] = AFRO_COLS.map(col => ({ wch: Math.min(Math.max(col.length, 10), 35) }));
+
+      XLSX.utils.book_append_sheet(wb, ws, 'Ingestion Template');
+      setProgress(90);
+
+      const date = new Date();
+      const stamp = `${date.getFullYear()}${String(date.getMonth()+1).padStart(2,'0')}${String(date.getDate()).padStart(2,'0')}`;
+      XLSX.writeFile(wb, `Afrosonic_Master_${stamp}.xlsx`);
+
+      setProgress(100);
+      showToast(`Exported ${allRows.length} tracks across ${state.files.length} file${state.files.length > 1 ? 's' : ''}`);
+    } catch(err) {
+      showToast('Export failed: ' + err.message, true);
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg> Export Master .xlsx`;
+      setTimeout(() => setProgress(0), 800);
+    }
+  }, 50);
+}
+
+function setProgress(pct) {
+  document.getElementById('progressFill').style.width = pct + '%';
+}
+
+function setStatus(text, active = false) {
+  const pill = document.getElementById('statusPill');
+  pill.textContent = text;
+  pill.className = 'status-pill' + (active ? ' active' : '');
+}
+
+let toastTimer;
+function showToast(msg, isError = false) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'show' + (isError ? ' error' : '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.className = ''; }, 3500);
+}
+
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
+
+dropZone.addEventListener('click', () => fileInput.click());
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropZone.classList.remove('dragover');
+  handleFiles([...e.dataTransfer.files]);
+});
+fileInput.addEventListener('change', () => handleFiles([...fileInput.files]));
+
+async function handleFiles(files) {
+  const xlsxFiles = files.filter(f => f.name.endsWith('.xlsx'));
+  if (!xlsxFiles.length) { showToast('Please drop .xlsx files only', true); return; }
+
+  setStatus('processing…', true);
+  setProgress(10);
+
+  let loaded = 0;
+  for (const file of xlsxFiles) {
+    if (state.files.find(a => a.filename === file.name)) {
+      showToast(`"${file.name}" already loaded`);
+      continue;
+    }
+    try {
+      const fileData = await processFile(file);
+      state.files.push(fileData);
+      loaded++;
+      setProgress(10 + (loaded / xlsxFiles.length) * 80);
+    } catch(err) {
+      showToast(err.message, true);
+    }
+  }
+
+  setProgress(100);
+  setTimeout(() => setProgress(0), 600);
+  setStatus(state.files.length ? `${state.files.length} file${state.files.length > 1 ? 's' : ''} loaded` : 'idle', state.files.length > 0);
+  renderQueue();
+  renderTable();
+  fileInput.value = '';
+  if (loaded) showToast(`Loaded ${loaded} file${loaded > 1 ? 's' : ''} successfully`);
+}
+
+document.getElementById('fileQueue').addEventListener('click', e => {
+  const btn = e.target.closest('.file-remove');
+  if (!btn) return;
+  const id = parseFloat(btn.dataset.id);
+  state.files = state.files.filter(a => a.id !== id);
+  renderQueue();
+  renderTable();
+  if (!state.files.length) setStatus('idle');
+});
+
+document.getElementById('clearBtn').addEventListener('click', () => {
+  state.files = [];
+  renderQueue();
+  renderTable();
+  setStatus('idle');
+});
+
+document.getElementById('exportBtn').addEventListener('click', exportMaster);
+
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    state.view = tab.dataset.view;
+    renderTable();
+  });
+});
+
+document.getElementById('searchFilter').addEventListener('input', e => {
+  state.filter = e.target.value;
+  renderTable();
+});
+
+renderQueue();
+</script>
+</body>
+</html>

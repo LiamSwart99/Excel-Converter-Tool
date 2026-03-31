@@ -1190,7 +1190,7 @@ function saveFieldMapping(mapping) {
 // Version
 // ─────────────────────────────────────────────────────
 
-const APP_VERSION = 'v1.3.2';
+const APP_VERSION = 'v1.3.3';
 document.getElementById('appVersion').textContent = APP_VERSION;
 
 // ─────────────────────────────────────────────────────
@@ -1497,12 +1497,18 @@ function parseSourceSheet(sheetData) {
     }
 
     r['Moods'] = isMain === 'Y' ? getMoods(kw) : null;
-    // Music For: use TRACK: Music For column directly (split on commas or semicolons → semicolons, no spaces)
-    const rawMusicFor = row['TRACK: Music For'];
-    if (rawMusicFor != null && rawMusicFor !== '') {
-      r['Music For'] = String(rawMusicFor).split(/[,;]/).map(s => s.trim()).filter(Boolean).join(';');
+    // Music For: check TRACK: Music For first, then fall back to keyword matching across all keyword columns
+    const mfDirect = safeStr(row['TRACK: Music For']);
+    if (mfDirect) {
+      r['Music For'] = String(mfDirect).split(/[,;]/).map(s => s.trim()).filter(Boolean).join(';');
     } else {
-      r['Music For'] = getMusicForFromKeywords(kw);
+      // Try TRACK: Keywords, ALBUM: Keywords, ALBUM: Tags in order
+      const combinedKw = [
+        row['TRACK: Keywords'],
+        row['ALBUM: Keywords'],
+        row['ALBUM: Tags'],
+      ].filter(Boolean).join(',');
+      r['Music For'] = getMusicForFromKeywords(combinedKw || kw);
     }
     r['Tempos'] = safeStr(row['TRACK: Tempo']);
     r['Artwork'] = null;
@@ -1520,12 +1526,17 @@ function parseSourceSheet(sheetData) {
     return r;
   });
 
-  // Post-process: assign Underscore, Underscore 2, Underscore 3… per track group (resets per main track)
+  // Post-process: assign Underscore, Underscore 2, Underscore 3… per track group
+  // Reset counter whenever Work Name changes (more reliable than Is this the Work flag)
   let underscoreCount = 0;
+  let lastWorkName = null;
   mappedTracks.forEach(track => {
-    if (track['Is this the Work'] === 'Y') {
-      underscoreCount = 0; // reset for each new main track group
-    } else if (track['Version Type'] === '__UNDERSCORE__') {
+    const currentWorkName = track['Work Name'];
+    if (currentWorkName !== lastWorkName) {
+      lastWorkName = currentWorkName;
+      underscoreCount = 0; // new track group — reset
+    }
+    if (track['Version Type'] === '__UNDERSCORE__') {
       underscoreCount++;
       track['Version Type'] = underscoreCount === 1 ? 'Underscore' : `Underscore ${underscoreCount}`;
     }

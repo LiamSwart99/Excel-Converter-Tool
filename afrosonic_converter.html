@@ -903,7 +903,7 @@
      SCREEN 1: LANDING
 ════════════════════════════════════════════════════ -->
 <div class="screen landing-screen active" id="screenLanding">
-  <div class="landing-app-name">Mama Dance Metadata Sheet Converter</div>
+  <div class="landing-app-name">Mama Dance Metadata Sheet Converter <span id="appVersion" style="font-size:0.7em;opacity:0.45;font-weight:400;letter-spacing:0.05em;"></span></div>
   <div class="landing-hero">
     <div class="landing-title">Convert your tracks.<br>Export <span>ready to submit</span>.</div>
     <div class="landing-sub">Drop one or more source Excel files to get started.<br>We'll map them to your chosen destination format.</div>
@@ -1185,6 +1185,13 @@ function saveFieldMapping(mapping) {
     console.error('Failed to save field mapping to localStorage');
   }
 }
+
+// ─────────────────────────────────────────────────────
+// Version
+// ─────────────────────────────────────────────────────
+
+const APP_VERSION = 'v1.3.0';
+document.getElementById('appVersion').textContent = APP_VERSION;
 
 // ─────────────────────────────────────────────────────
 // App state

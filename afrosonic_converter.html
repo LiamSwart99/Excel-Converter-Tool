@@ -1190,7 +1190,7 @@ function saveFieldMapping(mapping) {
 // Version
 // ─────────────────────────────────────────────────────
 
-const APP_VERSION = 'v1.3.1';
+const APP_VERSION = 'v1.3.2';
 document.getElementById('appVersion').textContent = APP_VERSION;
 
 // ─────────────────────────────────────────────────────
@@ -1425,7 +1425,8 @@ function parseSourceSheet(sheetData) {
   const mapping = state.fieldMapping;
 
   const mappedTracks = rows.map(row => {
-    const isMain = row['TRACK: Is Main'] === 'Y' ? 'Y' : 'N';
+    const rawIsMain = row['TRACK: Is Main'];
+    const isMain = (rawIsMain === 'Y' || rawIsMain === true || rawIsMain === 1 || String(rawIsMain).toUpperCase() === 'Y') ? 'Y' : 'N';
     const title = String(row['TRACK: Title'] || '');
     const trackVersion = row['TRACK: Version'] || '';
     const workName = getWorkName(title, isMain, trackVersion);
@@ -1474,12 +1475,15 @@ function parseSourceSheet(sheetData) {
       else {
         // Derive mix name from track title: strip the work name prefix and convert underscores to spaces
         const prefix = workName.replace(/\s+/g, '_');
+        let derived = '';
         if (String(title).toUpperCase().startsWith(prefix.toUpperCase() + '_')) {
-          vd = title.slice(prefix.length + 1).replace(/_/g, ' ');
+          derived = title.slice(prefix.length + 1).replace(/_/g, ' ');
         } else {
           const idx = title.indexOf('_');
-          vd = idx > 0 ? title.slice(idx + 1).replace(/_/g, ' ') : '';
+          derived = idx > 0 ? title.slice(idx + 1).replace(/_/g, ' ') : '';
         }
+        // Append " Mix" to all derived descriptions if not already ending with Mix
+        vd = derived ? (derived.toLowerCase().endsWith(' mix') ? derived : derived + ' Mix') : '';
       }
       r['Version Description'] = vd;
     }
@@ -1493,10 +1497,10 @@ function parseSourceSheet(sheetData) {
     }
 
     r['Moods'] = isMain === 'Y' ? getMoods(kw) : null;
-    // Music For: use TRACK: Music For column directly (split commas → semicolons, no spaces)
-    const rawMusicFor = safeStr(row['TRACK: Music For']);
-    if (rawMusicFor) {
-      r['Music For'] = rawMusicFor.split(',').map(s => s.trim()).filter(Boolean).join(';');
+    // Music For: use TRACK: Music For column directly (split on commas or semicolons → semicolons, no spaces)
+    const rawMusicFor = row['TRACK: Music For'];
+    if (rawMusicFor != null && rawMusicFor !== '') {
+      r['Music For'] = String(rawMusicFor).split(/[,;]/).map(s => s.trim()).filter(Boolean).join(';');
     } else {
       r['Music For'] = getMusicForFromKeywords(kw);
     }

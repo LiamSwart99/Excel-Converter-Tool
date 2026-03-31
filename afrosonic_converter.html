@@ -1331,7 +1331,7 @@ function getEditType(audioFilename) {
   return { code, description: state.editTypeMap[code] || state.editTypeMap['Ful'] || 'Full' };
 }
 
-function getVersionType(title, isMain, trackVersion) {
+function getVersionType(title, isMain) {
   if (isMain === 'Y') return 'Main';
   const t = String(title).toUpperCase();
   if (/_DRUMS[_\s]?&[_\s]?BASS|_DRUMS_BASS/.test(t)) return 'Underscore';
@@ -1339,9 +1339,8 @@ function getVersionType(title, isMain, trackVersion) {
   if (/_NO_VOCALS/.test(t)) return 'Instrumental';
   if (/_INSTRUMENTAL/.test(t)) return 'Instrumental';
   if (/_UNDERSCORE/.test(t)) return 'Underscore';
-  // Fall back to TRACK: Version column value for non-standard alt mixes
-  if (trackVersion && trackVersion !== 'Main') return trackVersion;
-  return '';
+  // Non-standard alt mix — placeholder; assigned Underscore 3+ in post-processing
+  return '__EXTRA_ALT__';
 }
 
 function getWorkName(title, isMain, trackVersion) {
@@ -1352,14 +1351,19 @@ function getWorkName(title, isMain, trackVersion) {
     .replace(/_Instrumental/gi,'').replace(/_Underscore/gi,'')
     .replace(/_30$/,'').replace(/_60$/,'').replace(/_30_/g,'_').replace(/_60_/g,'_')
     .replace(/_+$/,'').trim();
-  // Strip non-standard suffix using TRACK: Version name (e.g. "Vocal Shout Mix" → "_Vocal_Shout_Mix")
-  if (trackVersion && trackVersion !== 'Main' && name.includes('_')) {
+  // Try to strip non-standard suffix via TRACK: Version name
+  if (trackVersion && trackVersion !== 'Main') {
     const suffix = '_' + trackVersion.replace(/\s+/g, '_');
     if (name.toLowerCase().endsWith(suffix.toLowerCase())) {
       name = name.slice(0, -suffix.length);
     }
   }
-  return name.replace(/_+$/,'').trim();
+  // Final safety: strip from first underscore (alt mix titles use underscores; main titles use spaces)
+  const firstUnderscore = name.indexOf('_');
+  if (firstUnderscore > 0) {
+    name = name.substring(0, firstUnderscore);
+  }
+  return name.trim();
 }
 
 function getVersionDescription(description) {
@@ -1415,7 +1419,7 @@ function parseSourceSheet(sheetData) {
   const rows = sheetData.filter(r => r['TRACK: Title']);
   const mapping = state.fieldMapping;
 
-  return rows.map(row => {
+  const mappedTracks = rows.map(row => {
     const isMain = row['TRACK: Is Main'] === 'Y' ? 'Y' : 'N';
     const title = String(row['TRACK: Title'] || '');
     const trackVersion = row['TRACK: Version'] || '';
@@ -1442,13 +1446,29 @@ function parseSourceSheet(sheetData) {
     r['Is this the Work'] = isMain;
     r['Work Name'] = workName;
     r['Work Description'] = isMain === 'Y' ? (safeStr(row['TRACK: Description']) || null) : null;
-    r['Version Type'] = getVersionType(title, isMain, trackVersion);
+    r['Version Type'] = getVersionType(title, isMain);
 
     const editTypeInfo = getEditType(audioFile);
     r['EditType'] = editTypeInfo.code;
 
-    // Version Description: vocal content classification from track description
-    r['Version Description'] = getVersionDescription(row['TRACK: Description']);
+    // Version Description:
+    // - Main tracks: vocal content classification (Vocal Lead / Instrumental / Backing Vocals Only)
+    // - Alt mixes: mix-type label (Drums & Bass Mix, No Drums Mix, etc.)
+    if (isMain === 'Y') {
+      r['Version Description'] = getVersionDescription(row['TRACK: Description']);
+    } else {
+      const t2 = String(title).toUpperCase();
+      let vd = '';
+      if (/_DRUMS[_\s]?&[_\s]?BASS|_DRUMS_BASS/.test(t2)) vd = 'Drums & Bass Mix';
+      else if (/_NO_DRUMS/.test(t2))       vd = 'No Drums Mix';
+      else if (/_NO_VOCALS/.test(t2))      vd = 'No Vocals Mix';
+      else if (/_INSTRUMENTAL/.test(t2))   vd = 'Instrumental Mix';
+      else if (/_UNDERSCORE/.test(t2))     vd = 'Underscore Mix';
+      else if (/_30[_$]/.test(t2))         vd = '30 Second Edit';
+      else if (/_60[_$]/.test(t2))         vd = '60 Second Edit';
+      else if (trackVersion && trackVersion !== 'Main') vd = trackVersion;
+      r['Version Description'] = vd;
+    }
 
     // Writer forenames: concatenate First Name + Middle Name
     for (let i = 1; i <= 10; i++) {
@@ -1468,7 +1488,8 @@ function parseSourceSheet(sheetData) {
     }
     r['Tempos'] = safeStr(row['TRACK: Tempo']);
     r['Artwork'] = null;
-    r['Audio File Name'] = audioFile ? `${audioFile}.wav` : null;
+    // Strip any existing .wav extension before appending to avoid double .wav
+    r['Audio File Name'] = audioFile ? audioFile.replace(/\.wav$/i, '') + '.wav' : null;
 
     // Format composer and publisher splits as whole numbers (no decimal)
     for (let i = 1; i <= 10; i++) {
@@ -1480,6 +1501,19 @@ function parseSourceSheet(sheetData) {
 
     return r;
   });
+
+  // Post-process: assign Underscore 3, 4, … to non-standard alt mixes per main track group
+  let extraAltCount = 2; // Underscore=1, Underscore 2=2, next extra starts at 3
+  mappedTracks.forEach(track => {
+    if (track['Is this the Work'] === 'Y') {
+      extraAltCount = 2; // reset for each new main track
+    } else if (track['Version Type'] === '__EXTRA_ALT__') {
+      extraAltCount++;
+      track['Version Type'] = `Underscore ${extraAltCount}`;
+    }
+  });
+
+  return mappedTracks;
 }
 
 function processFile(file) {

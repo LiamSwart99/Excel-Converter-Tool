@@ -1190,7 +1190,7 @@ function saveFieldMapping(mapping) {
 // Version
 // ─────────────────────────────────────────────────────
 
-const APP_VERSION = 'v1.3.0';
+const APP_VERSION = 'v1.3.1';
 document.getElementById('appVersion').textContent = APP_VERSION;
 
 // ─────────────────────────────────────────────────────
@@ -1341,13 +1341,11 @@ function getEditType(audioFilename) {
 function getVersionType(title, isMain) {
   if (isMain === 'Y') return 'Main';
   const t = String(title).toUpperCase();
-  if (/_DRUMS[_\s]?&[_\s]?BASS|_DRUMS_BASS/.test(t)) return 'Underscore';
-  if (/_NO_DRUMS/.test(t)) return 'Underscore 2';
+  // Instrumental variants stay as Instrumental (not numbered)
   if (/_NO_VOCALS/.test(t)) return 'Instrumental';
   if (/_INSTRUMENTAL/.test(t)) return 'Instrumental';
-  if (/_UNDERSCORE/.test(t)) return 'Underscore';
-  // Non-standard alt mix — placeholder; assigned Underscore 3+ in post-processing
-  return '__EXTRA_ALT__';
+  // All other alt mixes get sequential Underscore N per track group (post-processed)
+  return '__UNDERSCORE__';
 }
 
 function getWorkName(title, isMain, trackVersion) {
@@ -1473,7 +1471,16 @@ function parseSourceSheet(sheetData) {
       else if (/_UNDERSCORE/.test(t2))     vd = 'Underscore Mix';
       else if (/_30[_$]/.test(t2))         vd = '30 Second Edit';
       else if (/_60[_$]/.test(t2))         vd = '60 Second Edit';
-      else if (trackVersion && trackVersion !== 'Main') vd = trackVersion;
+      else {
+        // Derive mix name from track title: strip the work name prefix and convert underscores to spaces
+        const prefix = workName.replace(/\s+/g, '_');
+        if (String(title).toUpperCase().startsWith(prefix.toUpperCase() + '_')) {
+          vd = title.slice(prefix.length + 1).replace(/_/g, ' ');
+        } else {
+          const idx = title.indexOf('_');
+          vd = idx > 0 ? title.slice(idx + 1).replace(/_/g, ' ') : '';
+        }
+      }
       r['Version Description'] = vd;
     }
 
@@ -1509,14 +1516,14 @@ function parseSourceSheet(sheetData) {
     return r;
   });
 
-  // Post-process: assign Underscore 3, 4, … to non-standard alt mixes per main track group
-  let extraAltCount = 2; // Underscore=1, Underscore 2=2, next extra starts at 3
+  // Post-process: assign Underscore, Underscore 2, Underscore 3… per track group (resets per main track)
+  let underscoreCount = 0;
   mappedTracks.forEach(track => {
     if (track['Is this the Work'] === 'Y') {
-      extraAltCount = 2; // reset for each new main track
-    } else if (track['Version Type'] === '__EXTRA_ALT__') {
-      extraAltCount++;
-      track['Version Type'] = `Underscore ${extraAltCount}`;
+      underscoreCount = 0; // reset for each new main track group
+    } else if (track['Version Type'] === '__UNDERSCORE__') {
+      underscoreCount++;
+      track['Version Type'] = underscoreCount === 1 ? 'Underscore' : `Underscore ${underscoreCount}`;
     }
   });
 

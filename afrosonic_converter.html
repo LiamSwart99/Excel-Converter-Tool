@@ -1344,14 +1344,36 @@ function getVersionType(title, isMain, trackVersion) {
   return '';
 }
 
-function getWorkName(title, isMain) {
+function getWorkName(title, isMain, trackVersion) {
   if (isMain === 'Y') return title;
-  return String(title)
+  let name = String(title)
     .replace(/_Drums_Bass/gi,'').replace(/_Drums_bass/gi,'')
     .replace(/_No_Drums/gi,'').replace(/_No_Vocals/gi,'')
     .replace(/_Instrumental/gi,'').replace(/_Underscore/gi,'')
     .replace(/_30$/,'').replace(/_60$/,'').replace(/_30_/g,'_').replace(/_60_/g,'_')
     .replace(/_+$/,'').trim();
+  // Strip non-standard suffix using TRACK: Version name (e.g. "Vocal Shout Mix" → "_Vocal_Shout_Mix")
+  if (trackVersion && trackVersion !== 'Main' && name.includes('_')) {
+    const suffix = '_' + trackVersion.replace(/\s+/g, '_');
+    if (name.toLowerCase().endsWith(suffix.toLowerCase())) {
+      name = name.slice(0, -suffix.length);
+    }
+  }
+  return name.replace(/_+$/,'').trim();
+}
+
+function getVersionDescription(description) {
+  if (!description) return 'Instrumental';
+  const d = String(description).toLowerCase();
+  // Backing vocals: chops, chants, backing
+  if (/vocal\s*chop|vox\s*chant|vocal\s*chant|backing\s*vocal/i.test(d)) {
+    return 'Backing Vocals Only';
+  }
+  // Vocal lead: any mention of vocals, lyrics, singing
+  if (/\bvocal|\blyric|\bsing[a-z]*\b|\bsinger\b|\brap\b|\bmc\b/i.test(d)) {
+    return 'Vocal Lead';
+  }
+  return 'Instrumental';
 }
 
 function getMoods(keywords) {
@@ -1396,7 +1418,8 @@ function parseSourceSheet(sheetData) {
   return rows.map(row => {
     const isMain = row['TRACK: Is Main'] === 'Y' ? 'Y' : 'N';
     const title = String(row['TRACK: Title'] || '');
-    const workName = getWorkName(title, isMain);
+    const trackVersion = row['TRACK: Version'] || '';
+    const workName = getWorkName(title, isMain, trackVersion);
     const audioFile = row['TRACK: Audio Filename'] || row['TRACK: Title'];
     const kw = row['TRACK: Keywords'] || '';
 
@@ -1419,29 +1442,13 @@ function parseSourceSheet(sheetData) {
     r['Is this the Work'] = isMain;
     r['Work Name'] = workName;
     r['Work Description'] = isMain === 'Y' ? (safeStr(row['TRACK: Description']) || null) : null;
-    r['Version Type'] = getVersionType(title, isMain, row['TRACK: Version']);
+    r['Version Type'] = getVersionType(title, isMain, trackVersion);
 
     const editTypeInfo = getEditType(audioFile);
     r['EditType'] = editTypeInfo.code;
 
-    if (isMain === 'N') {
-      let versionDesc = null;
-      if (/_DRUMS[_\s]&[_\s]BASS|_DRUMS_BASS/i.test(title)) versionDesc = 'Drums & Bass Mix';
-      else if (/_NO[_\s]DRUMS/i.test(title))    versionDesc = 'No Drums Mix';
-      else if (/_NO[_\s]VOCALS/i.test(title))   versionDesc = 'No Vocals Mix';
-      else if (/_INSTRUMENTAL/i.test(title))    versionDesc = 'Instrumental Mix';
-      else if (/_UNDERSCORE/i.test(title))      versionDesc = 'Underscore Mix';
-      else if (/_30[_\s]|_30$/i.test(title))    versionDesc = '30 Second Edit';
-      else if (/_60[_\s]|_60$/i.test(title))    versionDesc = '60 Second Edit';
-      // For non-standard alt mixes (e.g. "Vocal Shout Mix"), use TRACK: Version as-is
-      if (!versionDesc) {
-        const tv = row['TRACK: Version'];
-        if (tv && tv !== 'Main') versionDesc = tv;
-      }
-      r['Version Description'] = versionDesc || editTypeInfo.description;
-    } else {
-      r['Version Description'] = null; // empty for main tracks
-    }
+    // Version Description: vocal content classification from track description
+    r['Version Description'] = getVersionDescription(row['TRACK: Description']);
 
     // Writer forenames: concatenate First Name + Middle Name
     for (let i = 1; i <= 10; i++) {
@@ -1452,8 +1459,13 @@ function parseSourceSheet(sheetData) {
     }
 
     r['Moods'] = isMain === 'Y' ? getMoods(kw) : null;
-    // Music For: use TRACK: Music For column directly, fall back to keyword matching
-    r['Music For'] = safeStr(row['TRACK: Music For']) || getMusicForFromKeywords(kw);
+    // Music For: use TRACK: Music For column directly (split commas → semicolons, no spaces)
+    const rawMusicFor = safeStr(row['TRACK: Music For']);
+    if (rawMusicFor) {
+      r['Music For'] = rawMusicFor.split(',').map(s => s.trim()).filter(Boolean).join(';');
+    } else {
+      r['Music For'] = getMusicForFromKeywords(kw);
+    }
     r['Tempos'] = safeStr(row['TRACK: Tempo']);
     r['Artwork'] = null;
     r['Audio File Name'] = audioFile ? `${audioFile}.wav` : null;
@@ -1992,6 +2004,7 @@ function exportMaster() {
       const wb = XLSX.utils.book_new();
       const allRows = [];
 
+      let altMixCounter = 0;
       state.files.forEach(file => {
         file.tracks.forEach(track => {
           const row = {};
@@ -2000,6 +2013,11 @@ function exportMaster() {
             if (val === null || val === undefined) val = '';
             row[col] = val;
           });
+          // Alt mixes get sequential numbers in Work Description (global across all albums)
+          if (track['Is this the Work'] === 'N') {
+            altMixCounter++;
+            row['Work Description'] = String(altMixCounter);
+          }
           allRows.push(row);
         });
       });

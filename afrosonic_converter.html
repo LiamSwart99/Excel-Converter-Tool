@@ -911,8 +911,8 @@
       <svg class="landing-drop-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
         <path d="M9 13h6m-3-3v6m5 3H7a2 2 0 01-2-2V7a2 2 0 012-2h5l2 2h5a2 2 0 012 2v9a2 2 0 01-2 2z"/>
       </svg>
-      <div class="landing-drop-text">Drop Excel files here</div>
-      <div class="landing-drop-sub">.xlsx files only · multiple files supported</div>
+      <div class="landing-drop-text">Drop files here</div>
+      <div class="landing-drop-sub">.xlsx and .csv files · multiple files supported</div>
       <button class="landing-browse-btn" id="landingBrowseBtn">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"/>
@@ -1042,7 +1042,7 @@
   </div>
 </div>
 
-<input type="file" id="fileInput" accept=".xlsx" multiple>
+<input type="file" id="fileInput" accept=".xlsx,.csv" multiple>
 <div id="toast"></div>
 
 <script>
@@ -1125,14 +1125,14 @@ function buildDefaultFieldMapping() {
     { dest: 'Instruments',      type: 'direct',    source: 'TRACK: Instrumentation',  group: 'Classification', transform: 'none',  notes: '' },
     { dest: 'Country List',     type: 'hardcoded', value: 'African;South Africa',     group: 'Classification',                     notes: 'Semicolon-separated territory list' },
     { dest: "Era's",            type: 'hardcoded', value: null,                       group: 'Classification',                     notes: '' },
-    { dest: 'Moods',            type: 'computed',  source: 'TRACK: Keywords',         group: 'Classification',                     notes: 'Main tracks only: keywords before "African" tag, semicolon-separated' },
-    { dest: 'Music For',        type: 'computed',  source: 'TRACK: Keywords',         group: 'Classification',                     notes: 'Keywords matching known Music For tags, semicolon-separated' },
+    { dest: 'Moods',            type: 'computed',  source: 'TRACK: Keywords',         group: 'Classification',                     notes: 'Main tracks only: up to 6 moods, stops at "African" keyword, semicolon-separated' },
+    { dest: 'Music For',        type: 'computed',  source: 'TRACK: Music For',        group: 'Classification',                     notes: 'Direct from TRACK: Music For column; falls back to keyword matching' },
     { dest: 'Music Styles',     type: 'hardcoded', value: null,                       group: 'Classification',                     notes: '' },
-    { dest: 'Tempos',           type: 'hardcoded', value: null,                       group: 'Classification',                     notes: 'Fill in manually after export' },
+    { dest: 'Tempos',           type: 'computed',  source: 'TRACK: Tempo',            group: 'Classification',                     notes: 'Direct from TRACK: Tempo column' },
     { dest: 'Well Known Tunes', type: 'hardcoded', value: null,                       group: 'Classification',                     notes: '' },
     { dest: 'Style-Alikes',     type: 'hardcoded', value: null,                       group: 'Classification',                     notes: '' },
     { dest: 'Music Key',        type: 'hardcoded', value: null,                       group: 'Classification',                     notes: '' },
-    { dest: 'Artwork',          type: 'direct',    source: 'ALBUM: Artwork Filename', group: 'Technical',      transform: 'none',  notes: '' },
+    { dest: 'Artwork',          type: 'hardcoded', value: null,                       group: 'Technical',                          notes: 'Not required by AFROSONIC' },
     { dest: 'Audio File Name',  type: 'computed',  source: 'TRACK: Audio Filename',   group: 'Technical',                          notes: 'Filename with .wav extension appended' },
   );
 
@@ -1144,7 +1144,8 @@ function buildSourceFields() {
     '(none)',
     'ALBUM: Code', 'ALBUM: Title', 'ALBUM: Description', 'ALBUM: Release Date', 'ALBUM: Artwork Filename',
     'TRACK: Number', 'TRACK: Title', 'TRACK: Is Main', 'TRACK: Description',
-    'TRACK: Duration', 'TRACK: BPM', 'TRACK: Audio Filename', 'TRACK: Keywords',
+    'TRACK: Duration', 'TRACK: BPM', 'TRACK: Tempo', 'TRACK: Audio Filename',
+    'TRACK: Keywords', 'TRACK: Music For', 'TRACK: Version',
     'TRACK: Lyrics', 'TRACK: Instrumentation',
     'CODE: ISWC', 'CODE: ISRC',
   ];
@@ -1294,20 +1295,24 @@ function formatReleaseDate(val) {
     d = new Date(val);
   }
   if (isNaN(d)) return String(val);
-  return `${d.getUTCMonth() + 1}/${d.getUTCDate()}/${d.getUTCFullYear()}`;
+  return `${d.getUTCFullYear()}/${d.getUTCMonth() + 1}/${d.getUTCDate()}`;
 }
 
 function durationToSeconds(val) {
   if (val == null) return null;
-  if (typeof val === 'number' && val > 0 && val < 1) {
-    const totalRawSecs = Math.round(val * 86400);
-    const mins = Math.floor(totalRawSecs / 3600);
-    const secs = Math.floor((totalRawSecs % 3600) / 60);
-    return mins * 60 + secs;
+  if (typeof val === 'number') {
+    if (val > 0 && val < 1) {
+      // Excel time fraction (e.g. 0.00171 = 148s)
+      return Math.round(val * 86400);
+    }
+    if (val >= 1) return Math.round(val); // already in seconds
   }
   if (typeof val === 'string') {
-    const parts = val.trim().split(':').map(Number);
-    if (parts.length >= 2) return parts[0] * 60 + parts[1];
+    const trimmed = val.trim();
+    if (/^\d+$/.test(trimmed)) return parseInt(trimmed, 10); // bare seconds string
+    const parts = trimmed.split(':').map(Number);
+    if (parts.length === 2) return parts[0] * 60 + parts[1];
+    if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
   }
   return null;
 }
@@ -1326,14 +1331,16 @@ function getEditType(audioFilename) {
   return { code, description: state.editTypeMap[code] || state.editTypeMap['Ful'] || 'Full' };
 }
 
-function getVersionType(title, isMain) {
-  if (isMain === 'Y') return '';
+function getVersionType(title, isMain, trackVersion) {
+  if (isMain === 'Y') return 'Main';
   const t = String(title).toUpperCase();
-  if (/_DRUMS_BASS|_DRUMS_BASS/.test(t)) return 'Underscore';
+  if (/_DRUMS[_\s]?&[_\s]?BASS|_DRUMS_BASS/.test(t)) return 'Underscore';
   if (/_NO_DRUMS/.test(t)) return 'Underscore 2';
   if (/_NO_VOCALS/.test(t)) return 'Instrumental';
   if (/_INSTRUMENTAL/.test(t)) return 'Instrumental';
   if (/_UNDERSCORE/.test(t)) return 'Underscore';
+  // Fall back to TRACK: Version column value for non-standard alt mixes
+  if (trackVersion && trackVersion !== 'Main') return trackVersion;
   return '';
 }
 
@@ -1353,9 +1360,17 @@ function getMoods(keywords) {
   const moods = [];
   for (const part of parts) {
     if (part.toLowerCase() === 'african') break;
+    if (moods.length >= 6) break;
     if (part) moods.push(part);
   }
   return moods.length ? moods.join(';') : null;
+}
+
+function formatSplit(val) {
+  if (val == null) return null;
+  const n = parseFloat(val);
+  if (isNaN(n)) return String(val);
+  return String(Math.round(n));
 }
 
 function getMusicForFromKeywords(keywords) {
@@ -1404,7 +1419,7 @@ function parseSourceSheet(sheetData) {
     r['Is this the Work'] = isMain;
     r['Work Name'] = workName;
     r['Work Description'] = isMain === 'Y' ? (safeStr(row['TRACK: Description']) || null) : null;
-    r['Version Type'] = getVersionType(title, isMain);
+    r['Version Type'] = getVersionType(title, isMain, row['TRACK: Version']);
 
     const editTypeInfo = getEditType(audioFile);
     r['EditType'] = editTypeInfo.code;
@@ -1418,9 +1433,14 @@ function parseSourceSheet(sheetData) {
       else if (/_UNDERSCORE/i.test(title))      versionDesc = 'Underscore Mix';
       else if (/_30[_\s]|_30$/i.test(title))    versionDesc = '30 Second Edit';
       else if (/_60[_\s]|_60$/i.test(title))    versionDesc = '60 Second Edit';
+      // For non-standard alt mixes (e.g. "Vocal Shout Mix"), use TRACK: Version as-is
+      if (!versionDesc) {
+        const tv = row['TRACK: Version'];
+        if (tv && tv !== 'Main') versionDesc = tv;
+      }
       r['Version Description'] = versionDesc || editTypeInfo.description;
     } else {
-      r['Version Description'] = editTypeInfo.description;
+      r['Version Description'] = null; // empty for main tracks
     }
 
     // Writer forenames: concatenate First Name + Middle Name
@@ -1432,8 +1452,19 @@ function parseSourceSheet(sheetData) {
     }
 
     r['Moods'] = isMain === 'Y' ? getMoods(kw) : null;
-    r['Music For'] = getMusicForFromKeywords(kw);
+    // Music For: use TRACK: Music For column directly, fall back to keyword matching
+    r['Music For'] = safeStr(row['TRACK: Music For']) || getMusicForFromKeywords(kw);
+    r['Tempos'] = safeStr(row['TRACK: Tempo']);
+    r['Artwork'] = null;
     r['Audio File Name'] = audioFile ? `${audioFile}.wav` : null;
+
+    // Format composer and publisher splits as whole numbers (no decimal)
+    for (let i = 1; i <= 10; i++) {
+      if (r[`Comp Split${i} %`] != null) r[`Comp Split${i} %`] = formatSplit(r[`Comp Split${i} %`]);
+    }
+    for (let i = 1; i <= 6; i++) {
+      if (r[`Publisher ${i} Split`] != null) r[`Publisher ${i} Split`] = formatSplit(r[`Publisher ${i} Split`]);
+    }
 
     return r;
   });
@@ -1442,9 +1473,12 @@ function parseSourceSheet(sheetData) {
 function processFile(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
+    const isCsv = file.name.toLowerCase().endsWith('.csv');
     reader.onload = (e) => {
       try {
-        const wb = XLSX.read(e.target.result, { type: 'array', cellDates: false });
+        const wb = isCsv
+          ? XLSX.read(e.target.result, { type: 'string', cellDates: false })
+          : XLSX.read(e.target.result, { type: 'array',  cellDates: false });
         const ws = wb.Sheets[wb.SheetNames[0]];
         const merged = XLSX.utils.sheet_to_json(ws, { defval: null, raw: true });
 
@@ -1472,7 +1506,8 @@ function processFile(file) {
       }
     };
     reader.onerror = () => reject(new Error(`Failed to read "${file.name}"`));
-    reader.readAsArrayBuffer(file);
+    if (isCsv) reader.readAsText(file, 'utf-8');
+    else reader.readAsArrayBuffer(file);
   });
 }
 
@@ -2021,13 +2056,13 @@ function showToast(msg, isError = false) {
 const fileInput = document.getElementById('fileInput');
 
 async function handleFiles(files, goToFormat = false) {
-  const xlsxFiles = files.filter(f => f.name.endsWith('.xlsx'));
-  if (!xlsxFiles.length) { showToast('Please drop .xlsx files only', true); return; }
+  const validFiles = files.filter(f => f.name.endsWith('.xlsx') || f.name.endsWith('.csv'));
+  if (!validFiles.length) { showToast('Please drop .xlsx or .csv files only', true); return; }
 
   if (goToFormat) {
     // From landing screen — stage files and go to format selection
-    state.pendingFiles = xlsxFiles;
-    const n = xlsxFiles.length;
+    state.pendingFiles = validFiles;
+    const n = validFiles.length;
     document.getElementById('formatFilesText').innerHTML = `<strong>${n}</strong> file${n > 1 ? 's' : ''} ready to convert`;
     showScreen('format');
     return;
@@ -2038,7 +2073,7 @@ async function handleFiles(files, goToFormat = false) {
   setProgress(10);
 
   let loaded = 0;
-  for (const file of xlsxFiles) {
+  for (const file of validFiles) {
     if (state.files.find(a => a.filename === file.name)) {
       showToast(`"${file.name}" already loaded`);
       continue;
@@ -2047,7 +2082,7 @@ async function handleFiles(files, goToFormat = false) {
       const fileData = await processFile(file);
       state.files.push(fileData);
       loaded++;
-      setProgress(10 + (loaded / xlsxFiles.length) * 80);
+      setProgress(10 + (loaded / validFiles.length) * 80);
     } catch(err) {
       showToast(err.message, true);
     }
